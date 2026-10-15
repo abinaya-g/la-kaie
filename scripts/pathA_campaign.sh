@@ -2,6 +2,8 @@
 # Path A campaign (experiments/MPHBS_DECONSTRUCTION_PREREG.md §4). Run only after the
 # pre-registration is frozen (§12). Linux only (the runner uses fork). Resumable:
 # re-running a command skips finished runs and never overwrites them.
+# The campaign is normally run by .github/workflows/pathA-campaign.yml (same commands,
+# split into parallel jobs); this script is the single-machine equivalent.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

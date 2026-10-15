@@ -163,6 +163,18 @@ performed at the end of each iteration without evaluating anything.
   runs ≈ 30 CPU-h; total ≈ 16 h wall-clock on 4 workers. The runner is
   resumable; a stopped session continues the same single attempt (as in
   SHE-v2).
+* **Execution environment:** GitHub-hosted Ubuntu runners, Python 3.11 with
+  the pinned `requirements.txt` (the environment of all earlier campaigns),
+  via `.github/workflows/pathA-campaign.yml` (started by hand). The workflow
+  refuses to start while §12 is blank, runs the full test suite (V1) first,
+  then runs one job per (benchmark, arm) with 4 workers (24 jobs, each under
+  the 6 h job limit), and finally one analysis job on the merged raw results.
+  Because every run is seeded independently, the split into jobs does not
+  change any result. A failed job is re-run as a whole; the analysis refuses
+  to compute verdicts while any primary (arm, instance) cell lacks runs.
+  Raw results and the analysis are kept as workflow artifacts (90 days) and
+  must be downloaded and committed to `results/raw/pathA/` and
+  `results/analysis/pathA/`.
 
 ## 5. Statistical analysis (frozen)
 
@@ -332,7 +344,9 @@ freezing.
 
 ## 12. Freeze record (to be filled when frozen)
 
-* Frozen by commit: `________`
+* Frozen by commit: the commit that fills in this section. The campaign
+  workflow records it as `git_commit` in every config snapshot; tag it
+  `pathA-prereg-frozen`.
 * Date (UTC): `________`
 * Approved by: `________`
 * Changes from v0.1 draft: `________`

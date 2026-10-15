@@ -113,8 +113,11 @@ def _write_fake_campaign(raw_root: Path, instances=FAKE_INSTANCES, max_runs=100)
     rng = np.random.default_rng(42)
     for bench, insts in instances.items():
         for label, arm in pa["arms"][bench].items():
-            runs = min(max_runs, 100 if label in ("PA-SARSA", "PA-RND-FAIR") else 50)
             for inst in insts:
+                full = label in ("PA-SARSA", "PA-RND-FAIR") or (
+                    bench == "CEC2022" and inst == pa["h5_f10_escape"]["instance"]
+                    and label in pa["h5_f10_escape"]["arms"])
+                runs = min(max_runs, 100 if full else 50)
                 d = raw_root / "pathA" / bench / label / f"inst{inst:02d}"
                 d.mkdir(parents=True, exist_ok=True)
                 for r in range(1, runs + 1):
@@ -131,7 +134,8 @@ def test_script_end_to_end(tmp_path, monkeypatch):
     import pathA_analysis
     raw, out = tmp_path / "raw", tmp_path / "out"
     _write_fake_campaign(raw)
-    monkeypatch.setattr(sys, "argv", ["pathA_analysis.py", "--raw-root", str(raw), "--out", str(out)])
+    monkeypatch.setattr(sys, "argv", ["pathA_analysis.py", "--raw-root", str(raw), "--out", str(out),
+                                      "--instances-from-data"])
     assert pathA_analysis.main() == 0
     s = json.loads((out / "summary.json").read_text())
     assert s["status"] == "ok"
@@ -157,3 +161,17 @@ def test_script_refuses_on_integrity_failure(tmp_path, monkeypatch):
     assert pathA_analysis.main() == 1
     s = json.loads((out / "summary.json").read_text())
     assert "primary" not in s and s["integrity"]["FIR"]["bad_fe"] == 1
+
+
+def test_completeness_blocks_missing_runs():
+    """Missing primary runs (e.g. a failed CI shard) block the confirmatory analysis."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import pathA_analysis
+    pa = load_yaml("pathA.yaml")
+    rows = [{"method": arm, "instance": 1, "run_id": r}
+            for arm in ("PA-SARSA", "PA-RND-FAIR") for r in range(1, 101)]
+    df = {"FIR": pd.DataFrame(rows[:-1])}               # PA-RND-FAIR run 100 missing
+    missing = pathA_analysis.completeness(df, pa, {"CEC2022": [], "FIR": [1]})
+    assert "FIR PA-RND-FAIR inst01: 99/100" in missing
+    assert "FIR PA-RND-AUTH inst01: 0/50" in missing     # an arm with no data at all
+    assert not any(m.startswith("FIR PA-SARSA") for m in missing)

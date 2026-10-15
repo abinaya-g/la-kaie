@@ -23,6 +23,7 @@ from lakaie.analysis.stats import friedman_block_analysis, load_campaign  # noqa
 from lakaie.experiment import load_yaml  # noqa: E402
 
 REF = ROOT / "third_party" / "mphbs_reference" / "results"
+BENCH = {"CEC2022": "cec2022.yaml", "FIR": "fir.yaml"}
 PRIMARY_ARMS = ["PA-SARSA", "PA-RND-FAIR", "PA-RND-SYNC", "PA-RND-AUTH", "PA-SKEL", "PA-MPHB"]
 
 
@@ -83,10 +84,31 @@ def v3(df, pa):
     return out
 
 
+def completeness(df, pa, instances):
+    """Every primary contrast and H5 needs all its paired runs on every instance (prereg §4)."""
+    need = []
+    for spec in pa["contrasts"]["primary"].values():
+        for bench in ("CEC2022", "FIR"):
+            if bench in spec:
+                need += [(bench, arm, inst, spec["runs"]) for arm in spec[bench] for inst in instances[bench]]
+    h5 = pa["h5_f10_escape"]
+    if h5["instance"] in instances["CEC2022"]:
+        need += [("CEC2022", arm, h5["instance"], h5["runs"]) for arm in h5["arms"]]
+    missing = set()
+    for bench, arm, inst, runs in need:
+        d = df.get(bench)
+        n = 0 if d is None else int(((d.method == arm) & (d.instance == inst) & (d.run_id <= runs)).sum())
+        if n < runs:
+            missing.add(f"{bench} {arm} inst{inst:02d}: {n}/{runs}")
+    return sorted(missing)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw-root", default=str(ROOT / "results" / "raw"))
     ap.add_argument("--out", default=str(ROOT / "results" / "analysis" / "pathA"))
+    ap.add_argument("--instances-from-data", action="store_true",
+                    help="tests only: check completeness on the instances present instead of the benchmark's")
     args = ap.parse_args()
     pa = load_yaml("pathA.yaml")
     out = Path(args.out)
@@ -102,10 +124,18 @@ def main():
         expected = {k: v["expected"][1] for k, v in pa["arms"][bench].items()}
         integ[bench] = integrity(d, expected)
 
+    if args.instances_from_data:
+        instances = {b: sorted(int(i) for i in df[b].instance.unique()) if b in df else [] for b in BENCH}
+    else:
+        instances = {b: load_yaml(f)["instances"] for b, f in BENCH.items()}
+    missing = completeness(df, pa, instances)
+
     summary = {"git_commit": git_hash(), "prereg": "experiments/MPHBS_DECONSTRUCTION_PREREG.md",
-               "integrity": integ}
+               "integrity": integ, "missing_primary_runs": missing}
     if not integ or not all(v["ok"] for v in integ.values()):
         summary["status"] = "integrity failure or no data: confirmatory analysis not run (prereg §6)"
+    elif missing:
+        summary["status"] = f"incomplete: {len(missing)} primary (arm, instance) cells lack runs; confirmatory analysis not run (prereg §4, §6)"
     else:
         summary["status"] = "ok"
         summary["primary"] = run_family(df, pa, "primary", tables)
