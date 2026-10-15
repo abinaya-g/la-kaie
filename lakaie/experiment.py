@@ -49,11 +49,24 @@ def lakaie_config(variant: str = "Full", overrides: dict | None = None) -> dict:
     return cfg
 
 
+def pathA_arm(label: str, bench_cfg: dict):
+    """Path A arm (configs/pathA.yaml): (family, domain config of `base` + flags, expected (T, FE))."""
+    arms = load_yaml("pathA.yaml")["arms"][bench_cfg["benchmark"]]
+    if label not in arms:
+        raise KeyError(f"{label} is not a Path A arm for {bench_cfg['benchmark']}")
+    arm = arms[label]
+    cfg = deep_update(bench_cfg["methods"][arm["base"]], arm.get("flags") or {})
+    return arm["family"], cfg, tuple(arm["expected"])
+
+
 def resolve_method(label: str, bench_cfg: dict, overrides: dict | None = None):
     """Returns (family_name, cfg)."""
     if label.startswith("LA-KAIE"):
         variant = label.split("-", 2)[2] if label.count("-") >= 2 else "Full"
         return "LA-KAIE", lakaie_config(variant, overrides)
+    if label.startswith("PA-"):
+        family, cfg, _ = pathA_arm(label, bench_cfg)
+        return family, deep_update(cfg, overrides or {})
     return label, copy.deepcopy(bench_cfg["methods"][label])
 
 

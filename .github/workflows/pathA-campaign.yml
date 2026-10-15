@@ -1,0 +1,174 @@
+# Path A campaign (experiments/MPHBS_DECONSTRUCTION_PREREG.md §4) on GitHub-hosted Linux runners.
+#
+# Started by hand only: Actions tab -> "Path A campaign" -> Run workflow (choose the branch).
+#   1. freeze-check  refuses to run while §12 of the pre-registration is still blank
+#   2. tests         V1: the full test suite in the pinned environment (requirements.txt)
+#   3. campaign      one job per (benchmark, arm); resumable runner, 4 workers per job
+#   4. analysis      merges every job's raw results, runs scripts/pathA_analysis.py once
+# Results are uploaded as workflow artifacts (pathA-raw-all, pathA-analysis); nothing is
+# committed back to the repository.
+name: Path A campaign
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_secondary:
+        description: "Also run the secondary arms (H6-H8)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pathA-campaign-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+
+jobs:
+  freeze-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pre-registration §12 must be filled in
+        run: |
+          f=experiments/MPHBS_DECONSTRUCTION_PREREG.md
+          if sed -n '/^## 12\./,/^## 13\./p' "$f" | grep -q '________'; then
+            echo "::error::§12 of $f still has blanks. Freeze the pre-registration before the campaign."
+            exit 1
+          fi
+          echo "frozen; campaign commit ${GITHUB_SHA}"
+
+  tests:
+    needs: freeze-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - name: Build the official CEC2022 library
+        run: python -c "from lakaie.benchmarks.cec2022 import build_library; build_library(force=True)"
+      - name: Static checks
+        run: python -m compileall -q lakaie scripts tests && python -m pyflakes lakaie scripts tests
+      - name: V1 full test suite
+        run: python -m pytest -q
+      - run: python scripts/capture_environment.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pathA-environment
+          path: results/ENVIRONMENT.json
+
+  campaign:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # ---- primary (prereg §3.1, §4)
+          - {bench: CEC2022, method: PA-SARSA,    runs: 100, level: primary}
+          - {bench: CEC2022, method: PA-RND-FAIR, runs: 100, level: primary}
+          - {bench: CEC2022, method: PA-RND-SYNC, runs: 50,  level: primary}
+          - {bench: CEC2022, method: PA-RND-AUTH, runs: 50,  level: primary, f10: true}
+          - {bench: CEC2022, method: PA-SKEL,     runs: 50,  level: primary, f10: true}
+          - {bench: CEC2022, method: PA-MPHB,     runs: 50,  level: primary}
+          - {bench: FIR,     method: PA-SARSA,    runs: 100, level: primary}
+          - {bench: FIR,     method: PA-RND-FAIR, runs: 100, level: primary}
+          - {bench: FIR,     method: PA-RND-AUTH, runs: 50,  level: primary}
+          - {bench: FIR,     method: PA-SKEL,     runs: 50,  level: primary}
+          - {bench: FIR,     method: PA-MPHB,     runs: 50,  level: primary}
+          # ---- secondary (prereg §3.2)
+          - {bench: CEC2022, method: PA-SARSA-Ni1,     runs: 50, level: secondary}
+          - {bench: CEC2022, method: PA-SARSA-Ni9,     runs: 50, level: secondary}
+          - {bench: CEC2022, method: PA-RND-FAIR-Ni1,  runs: 50, level: secondary}
+          - {bench: CEC2022, method: PA-RND-FAIR-Ni9,  runs: 50, level: secondary}
+          - {bench: CEC2022, method: PA-RND-K1,        runs: 50, level: secondary}
+          - {bench: CEC2022, method: PA-RND-GreedyAcc, runs: 50, level: secondary}
+          - {bench: CEC2022, method: PA-SARSA-SYNC,    runs: 50, level: secondary}
+          - {bench: FIR,     method: PA-SARSA-Ni1,     runs: 50, level: secondary}
+          - {bench: FIR,     method: PA-SARSA-Ni3,     runs: 50, level: secondary}
+          - {bench: FIR,     method: PA-RND-FAIR-Ni1,  runs: 50, level: secondary}
+          - {bench: FIR,     method: PA-RND-FAIR-Ni3,  runs: 50, level: secondary}
+          - {bench: FIR,     method: PA-RND-K1,        runs: 50, level: secondary}
+          - {bench: FIR,     method: PA-RND-GreedyAcc, runs: 50, level: secondary}
+    name: ${{ matrix.bench }} ${{ matrix.method }}
+    env:
+      ACTIVE: ${{ matrix.level == 'primary' || inputs.include_secondary }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.ACTIVE == 'true'
+      - uses: actions/setup-python@v5
+        if: env.ACTIVE == 'true'
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - if: env.ACTIVE == 'true'
+        run: python -m pip install -r requirements.txt
+      - name: Build the official CEC2022 library
+        if: env.ACTIVE == 'true'
+        run: python -c "from lakaie.benchmarks.cec2022 import build_library; build_library(force=True)"
+      - name: Run ${{ matrix.method }} (${{ matrix.runs }} runs per instance)
+        if: env.ACTIVE == 'true'
+        run: python scripts/run_experiment.py --benchmark ${{ matrix.bench }} --campaign pathA --methods ${{ matrix.method }} --runs ${{ matrix.runs }}
+      - name: H5 - extend CEC F10 to 100 seeds
+        if: env.ACTIVE == 'true' && matrix.f10
+        run: python scripts/run_experiment.py --benchmark CEC2022 --campaign pathA --methods ${{ matrix.method }} --instances 10 --runs 100
+      - name: Give snapshots and logs job-unique names
+        if: always() && env.ACTIVE == 'true'
+        run: |
+          for f in results/raw/pathA/${{ matrix.bench }}/config_snapshot_*.yaml logs/run_pathA_*.log; do
+            [ -e "$f" ] && mv "$f" "${f%.*}_${{ matrix.method }}.${f##*.}"
+          done
+          true
+      - uses: actions/upload-artifact@v4
+        if: always() && env.ACTIVE == 'true'
+        with:
+          name: pathA-${{ matrix.bench }}-${{ matrix.method }}
+          path: |
+            results/raw/pathA/
+            logs/run_pathA_*.log
+          if-no-files-found: error
+          retention-days: 90
+
+  analysis:
+    needs: campaign
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: python -m pip install -r requirements.txt
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pathA-*-PA-*
+          merge-multiple: true
+          path: .
+      - name: Pre-registered analysis (prereg §5, §6)
+        run: python scripts/pathA_analysis.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pathA-analysis
+          path: results/analysis/pathA/
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pathA-raw-all
+          path: |
+            results/raw/pathA/
+            logs/run_pathA_*.log
+          retention-days: 90

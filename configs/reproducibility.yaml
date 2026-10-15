@@ -7,6 +7,7 @@ master_seeds:
   smoke: 41000000
   pilot: 51000000
   sensitivity: 61000000   # tuning seeds are disjoint from main-experiment seeds
+  pathA: 92000000         # MPHBS deconstruction (experiments/MPHBS_DECONSTRUCTION_PREREG.md); disjoint from all other masters
 benchmark_offset:
   CEC2022: 0
   FIR: 100000
