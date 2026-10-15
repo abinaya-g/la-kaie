@@ -1,12 +1,11 @@
 # Path A — Does learning matter in MPHBS? Pre-registered deconstruction study
 
-Status: **pre-registration draft (v0.2, 2026-10-15). Not yet frozen.** The §10
-code and tests are implemented on branch `pathA/mphbs-deconstruction`; **no
-campaign run has been started.** The plan is frozen by committing this file
-(with §12 filled in) after the §10.2 tests pass on the campaign machine and
-**before** the first campaign run; the commit hash is then recorded in
-every raw-result record (`git_commit` in the config snapshot) and in the
-report.
+Status: **FROZEN (v1.0, 2026-10-15; §12).** The §10 code and tests are
+implemented; **no campaign run had been started at freezing.** The freeze
+commit is tagged `pathA-prereg-frozen`; the campaign workflow re-runs the full
+test suite (V1) in the pinned environment before the first run, and records
+the commit hash in every config snapshot (`git_commit`). Any later change to
+this file is a deviation (§9).
 
 Companion files: `reference/MPHBS_NOTES.md`, `MPHBS_REPRODUCTION_REPORT.md`
 (Stage 0 and mediator audit), `results/SHE_STAGE1_FOLLOWUP.md` §(c),
@@ -347,9 +346,16 @@ freezing.
 * Frozen by commit: the commit that fills in this section. The campaign
   workflow records it as `git_commit` in every config snapshot; tag it
   `pathA-prereg-frozen`.
-* Date (UTC): `________`
-* Approved by: `________`
-* Changes from v0.1 draft: `________`
+* Date (UTC): 2026-10-15
+* Approved by: Abinaya G
+* Changes from v0.1 draft: v0.2 moved the arms into `mphbs_variants.py`
+  (the validated `mphbs.py` stays hash-frozen); added the RND-SYNC arm and
+  split H2 into H2a/H2b after finding that the authors' mirror also
+  resynchronises the MPA memory on B-C1 (F-3); added H8 (SARSA-SYNC);
+  replaced the secondary N_i budgets with FE-probe calibrations; fixed the
+  verdict precedence (mixed first) and the direction rule (ŵ); added the
+  completeness check and GitHub Actions execution (§4). No outcome data
+  existed at any point before freezing.
 
 ## 13. Optional exploratory extension (not confirmatory, run only after §5 is complete)
 
