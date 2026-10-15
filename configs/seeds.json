@@ -10,7 +10,8 @@
     "n1_smoke": 81000000,
     "n1_calib": 83000000,
     "n1_main": 20260405,
-    "n1_reproduction_mphbs": 20260405
+    "n1_reproduction_mphbs": 20260405,
+    "pathA": 92000000
   },
   "benchmark_offset": {"CEC2022": 0, "FIR": 100000, "SYN": 200000},
   "notes": [

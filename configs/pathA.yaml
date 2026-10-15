@@ -1,0 +1,80 @@
+# Path A arms: experiments/MPHBS_DECONSTRUCTION_PREREG.md §3.
+# Each arm = the domain's validated configuration of `base` (configs/cec2022.yaml
+# B-C1 or configs/fir.yaml A-C1 for MPHBS) updated with `flags`.
+# family MPHBS   = the frozen port lakaie/algorithms/mphbs.py
+# family MPHBS-V = lakaie/algorithms/mphbs_variants.py (flags documented there)
+# family MPHB    = the frozen port lakaie/algorithms/mphb.py
+# expected = (T, FE total) from the FE-probe calibration; checked by
+# tests/pathA/test_pathA_arms.py and by scripts/pathA_analysis.py on every run.
+campaign: pathA
+tie_tol: 1.0e-12
+arms:
+  CEC2022:
+    # ---- primary
+    PA-SARSA:         {family: MPHBS,   base: MPHBS, flags: {},                                     expected: [1738, 199930]}
+    PA-RND-FAIR:      {family: MPHBS-V, base: MPHBS, flags: {mediator: random},                     expected: [1738, 199930]}
+    PA-RND-SYNC:      {family: MPHBS-V, base: MPHBS, flags: {mediator: random, sync_memory: true},  expected: [1738, 199930]}
+    PA-RND-AUTH:      {family: MPHBS-V, base: MPHBS, flags: {mediator: random, reeval_mpa_top: true}, expected: [1378, 199870]}
+    PA-SKEL:          {family: MPHBS-V, base: MPHBS, flags: {skip_phase2: true},                    expected: [2221, 199950]}
+    PA-MPHB:          {family: MPHB,    base: MPHB,  flags: {},                                     expected: [2221, 199950]}
+    # ---- secondary
+    PA-SARSA-Ni1:     {family: MPHBS-V, base: MPHBS, flags: {Ni: 1},                                expected: [2019, 199941]}
+    PA-SARSA-Ni9:     {family: MPHBS-V, base: MPHBS, flags: {Ni: 9},                                expected: [1226, 199898]}
+    PA-RND-FAIR-Ni1:  {family: MPHBS-V, base: MPHBS, flags: {mediator: random, Ni: 1},              expected: [2019, 199941]}
+    PA-RND-FAIR-Ni9:  {family: MPHBS-V, base: MPHBS, flags: {mediator: random, Ni: 9},              expected: [1226, 199898]}
+    PA-RND-K1:        {family: MPHBS-V, base: MPHBS, flags: {mediator: random, K: 1},               expected: [1738, 199930]}
+    PA-RND-GreedyAcc: {family: MPHBS-V, base: MPHBS, flags: {mediator: random, relaxed_accept: false}, expected: [1738, 199930]}
+    PA-SARSA-SYNC:    {family: MPHBS-V, base: MPHBS, flags: {sync_memory: true},                    expected: [1738, 199930]}
+  FIR:
+    # ---- primary (no SYNC arm: on A-C1 the memory is already synchronised, T-SYNC)
+    PA-SARSA:         {family: MPHBS,   base: MPHBS, flags: {},                                     expected: [919, 149857]}
+    PA-RND-FAIR:      {family: MPHBS-V, base: MPHBS, flags: {mediator: random},                     expected: [919, 149857]}
+    PA-RND-AUTH:      {family: MPHBS-V, base: MPHBS, flags: {mediator: random, reeval_mpa_top: true}, expected: [776, 149828]}
+    PA-SKEL:          {family: MPHBS-V, base: MPHBS, flags: {skip_phase2: true},                    expected: [1666, 150000]}
+    PA-MPHB:          {family: MPHB,    base: MPHB,  flags: {},                                     expected: [1666, 150000]}
+    # ---- secondary
+    PA-SARSA-Ni1:     {family: MPHBS-V, base: MPHBS, flags: {Ni: 1},                                expected: [1514, 149946]}
+    PA-SARSA-Ni3:     {family: MPHBS-V, base: MPHBS, flags: {Ni: 3},                                expected: [1303, 149905]}
+    PA-RND-FAIR-Ni1:  {family: MPHBS-V, base: MPHBS, flags: {mediator: random, Ni: 1},              expected: [1514, 149946]}
+    PA-RND-FAIR-Ni3:  {family: MPHBS-V, base: MPHBS, flags: {mediator: random, Ni: 3},              expected: [1303, 149905]}
+    PA-RND-K1:        {family: MPHBS-V, base: MPHBS, flags: {mediator: random, K: 1},               expected: [919, 149857]}
+    PA-RND-GreedyAcc: {family: MPHBS-V, base: MPHBS, flags: {mediator: random, relaxed_accept: false}, expected: [919, 149857]}
+
+# Contrasts (§2, §5). anchor first. runs = run indices used for pairing.
+contrasts:
+  primary:
+    H1:  {CEC2022: [PA-SARSA, PA-RND-FAIR],  FIR: [PA-SARSA, PA-RND-FAIR],  runs: 100}
+    H2a: {CEC2022: [PA-RND-SYNC, PA-RND-AUTH], FIR: [PA-RND-FAIR, PA-RND-AUTH], runs: 50}
+    H2b: {CEC2022: [PA-RND-FAIR, PA-RND-SYNC], runs: 50}
+    H3:  {CEC2022: [PA-SARSA, PA-SKEL],      FIR: [PA-SARSA, PA-SKEL],      runs: 50}
+    H4:  {CEC2022: [PA-SKEL, PA-MPHB],       FIR: [PA-SKEL, PA-MPHB],       runs: 50}
+  secondary:
+    H6-Ni1-policy: {CEC2022: [PA-SARSA-Ni1, PA-RND-FAIR-Ni1], FIR: [PA-SARSA-Ni1, PA-RND-FAIR-Ni1], runs: 50}
+    H6-Ni3-policy: {CEC2022: [PA-SARSA, PA-RND-FAIR],         FIR: [PA-SARSA-Ni3, PA-RND-FAIR-Ni3], runs: 50}
+    H6-Ni9-policy: {CEC2022: [PA-SARSA-Ni9, PA-RND-FAIR-Ni9], FIR: [PA-SARSA, PA-RND-FAIR],         runs: 50}
+    H6-RND-Ni1-vs-default: {CEC2022: [PA-RND-FAIR-Ni1, PA-RND-FAIR], FIR: [PA-RND-FAIR-Ni1, PA-RND-FAIR], runs: 50}
+    H6-RND-Ni-other-vs-default: {CEC2022: [PA-RND-FAIR-Ni9, PA-RND-FAIR], FIR: [PA-RND-FAIR-Ni3, PA-RND-FAIR], runs: 50}
+    H7-K1:        {CEC2022: [PA-RND-K1, PA-RND-FAIR],        FIR: [PA-RND-K1, PA-RND-FAIR],        runs: 50}
+    H7-GreedyAcc: {CEC2022: [PA-RND-GreedyAcc, PA-RND-FAIR], FIR: [PA-RND-GreedyAcc, PA-RND-FAIR], runs: 50}
+    H8:           {CEC2022: [PA-SARSA-SYNC, PA-SARSA], runs: 50}
+
+decision:
+  alpha: 0.05
+  equivalence_band: [0.44, 0.56]
+  bootstrap_resamples: 10000
+  bootstrap_seed: 92000001
+
+h5_f10_escape:
+  instance: 10
+  threshold: 50.0
+  arms: [PA-SARSA, PA-RND-FAIR, PA-RND-AUTH, PA-SKEL]
+  runs: 100
+  authors_sarsa_escapes: [17, 30]
+
+v3_authors_mirror:
+  arm: PA-RND-AUTH
+  runs: 30
+  CEC2022: {file: CEC2022_ablation_BC1_common_seeds/task_results.csv, alias: BR-C1, instance_col: FunctionID, value_col: Error}
+  FIR:     {file: FIR_ablation_AC1_common_seeds/task_results.csv,     alias: AR-C1, instance_col: CaseID,     value_col: BestFit}
+
+# Campaign commands: scripts/pathA_campaign.sh (not run as part of implementation).

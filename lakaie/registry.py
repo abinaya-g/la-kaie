@@ -6,12 +6,14 @@ from functools import lru_cache
 
 import numpy as np
 
-from .algorithms import hba, mpa, mphb, mphbs
+from .algorithms import hba, mpa, mphb, mphbs, mphbs_variants
 from .core import calibrate_iterations
 
 # Iteration-driven baselines: T is calibrated from the FE budget exactly as in
-# the authors' runners (FE probe with T=1 and T=2).
-ITERATIVE = {"HBA": hba.run, "MPA": mpa.run, "MPHB": mphb.run, "MPHBS": mphbs.run}
+# the authors' runners (FE probe with T=1 and T=2). MPHBS-V holds the Path A
+# deconstruction arms (configs/pathA.yaml).
+ITERATIVE = {"HBA": hba.run, "MPA": mpa.run, "MPHB": mphb.run, "MPHBS": mphbs.run,
+             "MPHBS-V": mphbs_variants.run}
 
 
 def method_family(name: str) -> str:
