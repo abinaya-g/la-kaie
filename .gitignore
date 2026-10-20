@@ -3,3 +3,12 @@ results/raw/**/*.tmp
 results/raw/**/*.tmp.npz
 .venv/
 __pycache__/
+paper/*.aux
+paper/*.log
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.out
+paper/*.blg
+paper/*.bbl
+paper/*.spl
+paper/build.log
