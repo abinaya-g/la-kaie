@@ -116,44 +116,113 @@ Our contributions are:
   and verifying them (Section~\ref{sec:discussion}).
 \end{enumerate}
 
-Section~\ref{sec:related} reviews related work. Section~\ref{sec:mphbs} formalises MPHBS and its published evidence,
+Section~\ref{sec:related} surveys the literature. Section~\ref{sec:mphbs} formalises MPHBS and its published evidence,
 and Section~\ref{sec:control} analyses the published control. Section~\ref{sec:design} presents the study design,
 Section~\ref{sec:results} the results and Section~\ref{sec:discussion} their interpretation. Section~\ref{sec:conclusion}
 concludes.
 
 %% =====================================================================
-\section{Related work}
+\section{Literature survey}
 \label{sec:related}
 
-\subsection{Hybrid metaheuristics and information exchange}
-Hybridising metaheuristics, by running several search processes and letting them exchange solutions or solution
-components, is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. In high-level relay or
-teamwork hybrids of the kind MPHBS belongs to, the design questions are what is exchanged, between which populations,
-when, and how much. MPHBS answers them with a fixed schedule (one mediator phase per iteration, a fixed number of
-episodes) and a learned answer to the remaining question of which source and rank provide each dimension.
+This section surveys the five bodies of work that MPHBS and our study draw on: the two parent algorithms and their
+variants, hybrid and multi-population metaheuristics, learning-based control of metaheuristics, population diversity, and
+the methodology of experimental comparison. Section~\ref{sec:gap} summarises the gap that this paper addresses.
 
-\subsection{Learning to control metaheuristics}
-Adaptive operator selection and parameter control treat the choice of a search component as a sequential decision and
-learn it from feedback, using credit assignment schemes and selection rules such as multi-armed
-bandits~\cite{fialho2010bandit,karafotias2015parameter}. Reinforcement learning, including temporal-difference methods
-such as SARSA, has been combined with evolutionary computation in many ways~\cite{drugan2019rl}. A recurring difficulty
-in this literature is credit assignment: the effect of one decision on the search is noisy, delayed and confounded with
-other decisions, so a learned controller may not outperform a uniform one. Comparisons with uniform or fixed controllers
-are therefore the standard evidence, and their validity depends on how well the controls are matched.
+\subsection{The parent algorithms: HBA and MPA}
+The Honey Badger Algorithm~\cite{hashim2022hba} alternates a ``digging'' move, which scales the distance to the best
+agent by a smell-intensity term, and a ``honey'' move towards the best agent, both modulated by a decreasing density
+factor. A recent survey and meta-analysis counts 52 studies proposing improved HBA variants (for example with chaotic maps,
+L\'evy flights or adaptive mechanisms), 20 studies hybridising HBA with other methods and 101 applications of the original
+algorithm~\cite{hassan2024hba}. The Marine Predators Algorithm~\cite{faramarzi2020mpa} switches between Brownian and L\'evy
+movements in three phases of the run and adds two memory mechanisms, the marine memory and the fish aggregating device
+(FAD) perturbation. A review of 102 MPA studies covers its variants and hybrids and critically discusses its convergence
+behaviour and main limitations~\cite{albetar2023mpa}. Both algorithms are thus
+typical of the recent generation of population-based metaheuristics, and both are frequently hybridised. MPHBS combines
+the two through a learned exchange mechanism; to our knowledge it is the first HBA--MPA hybrid and the first to control
+their exchange with a temporal-difference learner.
 
-\subsection{Deconstruction and experimental practice}
-A line of work deconstructs metaheuristics to determine which components actually carry their
-performance~\cite{sorensen2015metaphor,camacho2019iwd,camacho2022cuckoo,camacho2023exposing,aranha2022elephant}. Best
-practice for comparing algorithms emphasises fair budgets, paired designs, non-parametric
-tests~\cite{derrac2011tutorial}, tuning effort~\cite{eiben2011tuning}, reproducibility~\cite{lopezibanez2021reproducibility}
-and benchmarking methodology~\cite{bartzbeielstein2020benchmarking}. Our study applies these principles to a learned
-control component and adds two elements that are rare in the field: a frozen pre-registration and unit tests that prove
-the intended equivalences between variants.
+\subsection{Hybrid and multi-population metaheuristics}
+Hybridising metaheuristics is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. Talbi's taxonomy
+distinguishes low-level hybrids, which replace a component of one algorithm by another, from high-level hybrids, in which
+self-contained algorithms cooperate, and relay hybrids, which run them in sequence, from teamwork hybrids, which run them in
+parallel~\cite{talbi2002taxonomy}. Parallel and island models have long studied cooperating populations and the design of
+their migration: what is exchanged, between which populations, how often and how much~\cite{alba2002parallel}. Multi-population
+techniques have become widespread in nature-inspired optimisation; Ma et al.\ survey their concepts, design issues and
+applications~\cite{ma2019multipop}. In this vocabulary
+MPHBS is a high-level teamwork hybrid with two heterogeneous populations and a dedicated exchange phase. Its design fixes
+when and how much is exchanged (one mediator phase per iteration with a fixed number of episodes) and learns only which
+source and rank provide each dimension of the exchanged vectors. Unlike classical migration, which moves whole
+individuals, the mediator recombines individual coordinates from both populations.
 
-\subsection{Positioning}
-To our knowledge, no previous study re-examines MPHBS or its learned mediator, and no previous study analyses how
+\subsection{Learning-based control of metaheuristics}
+Using machine learning inside metaheuristics has become a research area of its own. Talbi classifies the synergies by the
+search component that learning acts on: the target optimisation problem, and the low-level and high-level components of
+the metaheuristic~\cite{talbi2021ml}. Parameter control adapts parameters during the run from feedback~\cite{karafotias2015parameter},
+and adaptive operator selection treats the choice of a variation operator as a sequential decision, typically solved with
+credit assignment schemes and multi-armed bandits~\cite{fialho2010bandit}. Reinforcement learning (RL) generalises these
+schemes~\cite{drugan2019rl}. A recent survey of RL-assisted evolutionary algorithms organises the field by the function RL
+performs: generating solutions, learning objective functions, selecting algorithms, operators or sub-populations, and
+adapting parameters~\cite{song2024rlea}.
+
+Table~\ref{tab:rl-survey} lists representative RL-controlled metaheuristics. They differ in the learner (tabular Q-learning,
+SARSA, deep Q-networks), in the decision that is learned (an operator, a parameter, a component of a hyper-heuristic, or
+the balance between exploration and exploitation) and in the state used. MPHBS stands out in two respects: its decisions
+are made per dimension of an assembled vector, and its value table is indexed by (dimension, rank, source), so its learned
+object is a recombination pattern rather than an operator or parameter. Across this literature, the usual evidence that
+learning helps is a comparison with the same algorithm without the learner, either with the controlled decision fixed or
+drawn at random. How closely such controls are matched to the learned variant, in evaluation budget per iteration and in
+state updates, is rarely reported; it is the question at the centre of this paper.
+
+\begin{table*}[t]
+\centering
+\caption{Representative reinforcement-learning-controlled metaheuristics (from the cited papers' descriptions).}
+\label{tab:rl-survey}
+\footnotesize
+\begin{tabular}{p{3.2cm}p{2.6cm}p{2.2cm}p{4.6cm}p{3.6cm}}
+\toprule
+Work & Base algorithm(s) & Learner & Learned decision & Evaluation \\
+\midrule
+DE-DDQN~\cite{sharma2019deddqn} & differential evolution & double deep Q-network & mutation strategy per generation, from 99 state features & CEC2005 \\
+Q-learning hyper-heuristic~\cite{choong2018hh} & selection hyper-heuristic & Q-learning & low-level heuristic selection and move acceptance & HyFlex, six domains \\
+RLI-GWO, RLEx-GWO, RLWOA~\cite{seyyedabbasi2021rl} & grey wolf, whale optimisation & Q-learning & switching between exploration and exploitation & global optimisation benchmarks \\
+QLESCA~\cite{hamad2022qlesca} & sine cosine algorithm & Q-learning, one table per agent & control parameters $r_1$, $r_3$ (exploration--exploitation) & 23 classical, 20 large-scale functions, 3 engineering problems \\
+MPHBS~\cite{flores2026mphbs} & HBA and MPA & SARSA-style TD update & (source, rank) per dimension when assembling hybrid vectors & CEC2022, 8 FIR filter designs \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Population diversity and the exploration--exploitation balance}
+Exploration and exploitation, and their measurement through population diversity, are central to understanding how
+population-based algorithms behave~\cite{crepinsek2013exploration}. Loss of diversity leads to premature convergence on
+suboptimal solutions, and many mechanisms have been proposed to maintain it~\cite{squillero2016diversity}. Whether a
+general ``best'' balance exists is itself debated~\cite{morales2020balance}. Memory and replacement rules, such as MPA's
+marine memory, are one of the levers that set this balance. Section~\ref{sec:diversity} shows that the way MPHBS updates
+the MPA memory has a much larger effect on diversity, and on performance, than its learned controller.
+
+\subsection{Experimental methodology and critical analyses}
+A line of critical work deconstructs metaheuristics to determine which components actually carry their performance, and
+has shown that several algorithms introduced with new metaphors reduce to known
+mechanisms~\cite{sorensen2015metaphor,camacho2019iwd,camacho2022cuckoo,camacho2023exposing,aranha2022elephant}.
+Methodological guidelines for comparing bio-inspired algorithms ask for appropriate benchmarks and reference algorithms,
+principled validation and sound statistics~\cite{latorre2021guidelines,derrac2011tutorial}, attention to tuning
+effort~\cite{eiben2011tuning}, reproducibility~\cite{lopezibanez2021reproducibility} and benchmarking
+practice~\cite{bartzbeielstein2020benchmarking}. Benchmark design itself can bias conclusions: Kudela showed that test
+functions with optima at the centre of the domain reward algorithms with a centre bias~\cite{kudela2022centre}, which is one
+reason to complement a single suite with shifted and rotated problems such as CEC2022 and BBOB~\cite{hansen2021coco}. Our
+study applies these principles to a learned control component and adds two elements that remain rare in the field: a
+frozen pre-registration~\cite{nosek2018preregistration} and unit tests that prove the intended equivalences between variants.
+
+\subsection{Research gap}
+\label{sec:gap}
+The surveyed work leaves three gaps that this paper addresses. First, RL-controlled metaheuristics are typically supported
+by comparisons with a random or fixed control, but the conditions under which such a control isolates the effect of
+learning, matching the evaluation cost per iteration and every state update, have not been made explicit. Second, MPHBS's
+claim that learning drives its performance has not been re-examined, although its code and per-run results are public.
+Third, the deconstruction literature has focused on metaphor-based algorithms; learned control components have received
+little such scrutiny. To our knowledge, no previous study re-examines MPHBS or its learned mediator, or analyses how
 per-iteration evaluation costs and state updates of random controls bias ablations of learned components.
-\pending{literature check with full texts: confirm this statement and add the closest studies.}
+\pending{confirm with a full-text search (Scopus/Web of Science) before submission.}
 
 %% =====================================================================
 \section{MPHBS and its published evidence}

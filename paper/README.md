@@ -18,7 +18,8 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 ## Open items (shown in red as PENDING / VERIFY in the PDF)
 
 1. Author e-mail, affiliation, co-authors, CRediT, competing interests, funding.
-2. Literature check with full texts (end of Section 1): confirm no prior re-examination of MPHBS or of learned
+2. Literature survey (Section 2) is written from verified bibliographic records and abstracts; still confirm with a
+   full-text Scopus/Web of Science search that no prior work re-examines MPHBS or learned
    information-exchange mediators; add the closest studies.
 3. Diversity diagnostic for the memory-refresh explanation (Section 5.4, 6.1); exploratory, from stored traces.
 4. Exploratory BBOB extension (Section 6.3).
