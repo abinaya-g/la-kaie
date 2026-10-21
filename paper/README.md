@@ -5,7 +5,9 @@ Two-column Elsevier `elsarticle` (5p) manuscript, target *Swarm and Evolutionary
 ## Build
 
 ```bash
-python scripts/paper_assets.py          # numbers, tables, results figure from results/analysis/pathA
+python scripts/pathA_diversity_diagnostic.py   # post hoc diversity diagnostic (exploratory)
+python scripts/paper_figures.py         # convergence, distributions, F10, dose, forest; appendix tables (~6 min)
+python scripts/paper_assets.py          # numbers (\res), main tables, per-instance figure from results/analysis/pathA
 cd paper && latexmk -pdf main.tex       # -> paper/main.pdf
 ```
 

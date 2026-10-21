@@ -1,20 +1,32 @@
-% Path A paper: draft. All results come from paper/generated/ (scripts/paper_assets.py).
+% Path A paper (journal draft). All results come from paper/generated/ (scripts/paper_assets.py,
+% scripts/paper_figures.py); do not type numbers by hand.
 \documentclass[5p,times]{elsarticle}
 
 \usepackage[T1]{fontenc}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amssymb,amsthm}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
 \usepackage{tikz}
 \usetikzlibrary{positioning,calc,arrows.meta}
+\usepackage[section]{placeins}
 \usepackage[hidelinks]{hyperref}
 
 \definecolor{lblue}{HTML}{2A78D6}
 \definecolor{lorange}{HTML}{EB6834}
-% visible markers for unfinished parts of the draft
 \newcommand{\pending}[1]{\textcolor{red}{[PENDING: #1]}}
-\newcommand{\verify}[1]{\textcolor{red}{[VERIFY: #1]}}
+\setlength{\emergencystretch}{2em}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newcommand{\E}{\mathbb{E}}
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
 
 \input{generated/results.tex}
 
@@ -24,34 +36,36 @@
 
 \begin{frontmatter}
 
-\title{Does the learning matter? A pre-registered deconstruction of SARSA-guided information exchange in the MPHBS hybrid metaheuristic}
+\title{Does the learning matter? A pre-registered deconstruction of SARSA-guided information exchange in the MPHBS
+hybrid metaheuristic}
 
 \author[1]{Abinaya G\corref{cor1}}
-\ead{PENDING-email@example.org}% PENDING: replace with the corresponding author's e-mail
+\ead{PENDING-email@example.org}% PENDING: corresponding author's e-mail
 \cortext[cor1]{Corresponding author.}
 \affiliation[1]{organization={\pending{department, institution}},
                 city={\pending{city}}, country={\pending{country}}}
-% \pending{co-authors and affiliations, e.g. supervisor}
+% PENDING: co-authors (e.g. supervisor) and their affiliations
 
 \begin{abstract}
 MPHBS couples the Honey Badger Algorithm and the Marine Predators Algorithm through a mediator that assembles hybrid
-solutions dimension by dimension under the control of a SARSA-style Q-table. Its original evaluation attributes part of
-the gains to this learning, mainly through a comparison with a ``matched'' random mirror. We show that this mirror is not
-matched per iteration: it re-evaluates the MPA population in every iteration, so it runs 21\% (CEC2022) and 16\% (FIR)
-fewer iterations at the same evaluation budget, and on CEC2022 it also refreshes a population memory that MPHBS leaves
-unchanged after the mediator. We then report a pre-registered study with budget-identical controls on CEC2022
-($D=20$) and eight FIR filter-design problems ($D=31$): \res{runs-total} seed-paired runs executed once, analysed with a
-frozen script. A random mediator at the same budget performs at least as well as SARSA on both benchmarks
-(mean paired win probability of SARSA \res{H1-CEC2022-wbar}, 95\% CI \res{H1-CEC2022-ci}, and \res{H1-FIR-wbar},
-\res{H1-FIR-ci}). The gains of MPHBS come instead from the exchange step itself (decisive on FIR) and from the
-restructured main loop, which outperforms the original backbone on all 20 problems even without a mediator. Refreshing the
-memory, as the published mirror does, is strongly harmful on CEC2022 (exploratory). We conclude with recommendations for
-designing ablation controls for learned components in metaheuristics.
+solutions dimension by dimension under the control of a SARSA-style value table, and its original evaluation attributes
+part of its performance to this learning, mainly through a comparison with a ``matched'' random mirror. We show
+analytically and from the published code that this mirror is not matched per iteration: it spends $N$ additional
+evaluations in every iteration, so it runs 21\% (CEC2022) and 16\% (FIR) fewer iterations at the same budget, and under
+the CEC2022 configuration it also refreshes a population memory that MPHBS leaves unchanged after the mediator. We then
+report a pre-registered study with budget-identical controls on the CEC2022 suite ($D=20$) and eight FIR filter-design
+problems ($D=31$): \res{runs-total} seed-paired runs executed once and analysed with a frozen script. A random mediator at
+the same budget performs at least as well as SARSA on both benchmarks (mean paired win probability of SARSA
+\res{H1-CEC2022-wbar}, 95\% CI \res{H1-CEC2022-ci}, and \res{H1-FIR-wbar}, \res{H1-FIR-ci}). What matters is the
+exchange step itself, which halves the median error on FIR, and how the population memory is handled: refreshing it, as
+the published mirror does, is strongly harmful on CEC2022 and, in a post hoc diagnostic, collapses population diversity. The restructured main loop
+of MPHBS is consistently but negligibly better than the original backbone. We formalise budget- and state-matched
+ablation controls and give a protocol for constructing them.
 \end{abstract}
 
 \begin{keyword}
-Hybrid metaheuristics \sep Reinforcement learning \sep Ablation \sep Experimental methodology \sep Pre-registration \sep
-Reproducibility
+Hybrid metaheuristics \sep Reinforcement learning \sep SARSA \sep Ablation \sep Experimental methodology \sep
+Pre-registration \sep Reproducibility
 \end{keyword}
 
 \end{frontmatter}
@@ -60,99 +74,287 @@ Reproducibility
 \section{Introduction}
 \label{sec:intro}
 
-Learned control components are now common in metaheuristics: reinforcement learning chooses operators, sets parameters,
-or decides how solution information flows between cooperating populations. Whether the \emph{learning} is responsible for
-the reported gains is usually argued with an ablation in which the learned controller is replaced by a random one. Such an
-ablation is informative only if the two variants differ in nothing but the learning. When the controlled variant also
-changes how evaluations are spent, how many iterations are run, or how the populations' internal state evolves, the
-comparison can attribute to learning an effect that has a different cause.
+Learned control components have become a common ingredient of population-based metaheuristics. Reinforcement learning
+selects variation operators, adapts parameters during the run, or decides how solution information flows between
+cooperating populations~\cite{karafotias2015parameter,drugan2019rl}. A learned controller is usually justified with an
+ablation that replaces it by a random or fixed one: if the learned variant performs better, the difference is attributed
+to learning. This inference is valid only if the two variants differ in nothing but the learning. When the controlled
+variant also changes how many objective function evaluations (FEs) each iteration consumes, how many iterations fit into
+the budget, or how the populations' internal state evolves, the comparison attributes to learning an effect that has a
+different cause.
 
-This paper examines one recent instance in detail. MPHBS~\cite{flores2026mphbs} hybridises the Honey Badger Algorithm
-(HBA)~\cite{hashim2022hba} and the Marine Predators Algorithm (MPA)~\cite{faramarzi2020mpa} through a mediator that assembles
-hybrid vectors from ranked subsets of both populations, guided by a SARSA-style value table~\cite{sutton2018rl}. The authors
-compare SARSA with a ``matched random mirror'' and report that SARSA is better on CEC2022~\cite{kumar2021cec2022} but not on
-their FIR filter-design problems. Their code and per-run results are public~\cite{flores2026code}, which makes a precise
-re-examination possible.
+This paper examines one recent instance of the problem in detail. MPHBS~\cite{flores2026mphbs} hybridises the Honey
+Badger Algorithm (HBA)~\cite{hashim2022hba} and the Marine Predators Algorithm (MPA)~\cite{faramarzi2020mpa}. After the
+native moves of both populations, a mediator assembles hybrid vectors dimension by dimension from ranked subsets of both
+populations, guided by a SARSA-style value table~\cite{sutton2018rl}. The authors compare SARSA with a ``matched random
+mirror'' and report that SARSA is better on CEC2022~\cite{kumar2021cec2022} but not on their FIR filter-design problems.
+Because their code and per-run results are public~\cite{flores2026code}, the claim can be re-examined precisely.
+
+We ask four research questions:
+\begin{description}
+\item[RQ1] Does the SARSA learning improve MPHBS over random choices of source and rank at an identical FE budget?
+\item[RQ2] Is the published random mirror matched to MPHBS, and if not, how much of the published difference does the
+  mismatch explain?
+\item[RQ3] Which components of MPHBS do carry its performance: the exchange step, its amount, the population memory, or
+  the restructured main loop?
+\item[RQ4] What general requirements follow for ablation controls of learned components?
+\end{description}
 
 Our contributions are:
 \begin{enumerate}
-\item We show from the authors' code that the published random mirror spends $N$ additional evaluations per iteration
-  and, under the CEC2022 configuration, additionally refreshes the MPA population memory after the mediator, which MPHBS
-  does not do (Section~\ref{sec:control}). Our port of the mirror agrees with the authors' published runs on all
-  \res{V3-CEC2022-n} CEC2022 functions and all \res{V3-FIR-n} FIR cases.
-\item We report a pre-registered study~\cite{nosek2018preregistration} with budget-identical controls that separate four
-  candidate causes of MPHBS's performance: the learning, the evaluation budget of the control, the memory refresh, and the
-  restructured main loop (Section~\ref{sec:design}).
-\item We find no benefit of learning at equal budget, a decisive benefit of the exchange step on FIR, and a large benefit
-  of the loop restructuring on both benchmarks (Section~\ref{sec:results}).
-\item We derive practical requirements for ablation controls of learned components (Section~\ref{sec:discussion}).
+\item A formal description of MPHBS's iteration, mediator and evaluation accounting (Section~\ref{sec:mphbs}), from which
+  we prove that the published mirror runs fewer iterations at the same budget and, under one of the two configurations,
+  differs in its memory dynamics (Section~\ref{sec:control}, Propositions~\ref{prop:iter} and~\ref{prop:memory}). Our port
+  of the mirror agrees with the authors' published runs on all \res{V3-CEC2022-n} CEC2022 functions and all
+  \res{V3-FIR-n} FIR cases.
+\item A pre-registered study~\cite{nosek2018preregistration} with budget-identical controls that separates the four
+  candidate causes, with a mechanical decision rule fixed before any run (Section~\ref{sec:design}).
+\item The finding that learning brings no benefit at equal budget, that the exchange step and the memory handling carry
+  the performance, and a post hoc diagnostic that links the memory effect to population diversity
+  (Section~\ref{sec:results}).
+\item A definition of budget- and state-matched controls and a protocol (Algorithm~\ref{alg:protocol}) for constructing
+  and verifying them (Section~\ref{sec:discussion}).
 \end{enumerate}
 
-The study continues a line of work that deconstructs metaheuristics to identify which components actually carry their
-performance~\cite{sorensen2015metaphor,camacho2019iwd,camacho2022cuckoo,camacho2023exposing,aranha2022elephant}. Unlike
-that work, our object is not a metaphor but a learned control component, and our main instrument is a controlled,
-pre-registered ablation. \pending{literature check: confirm that no published work re-examines MPHBS or learned
-information-exchange mediators in this way; add the closest related studies here.}
+Section~\ref{sec:related} reviews related work. Section~\ref{sec:mphbs} formalises MPHBS and its published evidence,
+and Section~\ref{sec:control} analyses the published control. Section~\ref{sec:design} presents the study design,
+Section~\ref{sec:results} the results and Section~\ref{sec:discussion} their interpretation. Section~\ref{sec:conclusion}
+concludes.
+
+%% =====================================================================
+\section{Related work}
+\label{sec:related}
+
+\subsection{Hybrid metaheuristics and information exchange}
+Hybridising metaheuristics, by running several search processes and letting them exchange solutions or solution
+components, is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. In high-level relay or
+teamwork hybrids of the kind MPHBS belongs to, the design questions are what is exchanged, between which populations,
+when, and how much. MPHBS answers them with a fixed schedule (one mediator phase per iteration, a fixed number of
+episodes) and a learned answer to the remaining question of which source and rank provide each dimension.
+
+\subsection{Learning to control metaheuristics}
+Adaptive operator selection and parameter control treat the choice of a search component as a sequential decision and
+learn it from feedback, using credit assignment schemes and selection rules such as multi-armed
+bandits~\cite{fialho2010bandit,karafotias2015parameter}. Reinforcement learning, including temporal-difference methods
+such as SARSA, has been combined with evolutionary computation in many ways~\cite{drugan2019rl}. A recurring difficulty
+in this literature is credit assignment: the effect of one decision on the search is noisy, delayed and confounded with
+other decisions, so a learned controller may not outperform a uniform one. Comparisons with uniform or fixed controllers
+are therefore the standard evidence, and their validity depends on how well the controls are matched.
+
+\subsection{Deconstruction and experimental practice}
+A line of work deconstructs metaheuristics to determine which components actually carry their
+performance~\cite{sorensen2015metaphor,camacho2019iwd,camacho2022cuckoo,camacho2023exposing,aranha2022elephant}. Best
+practice for comparing algorithms emphasises fair budgets, paired designs, non-parametric
+tests~\cite{derrac2011tutorial}, tuning effort~\cite{eiben2011tuning}, reproducibility~\cite{lopezibanez2021reproducibility}
+and benchmarking methodology~\cite{bartzbeielstein2020benchmarking}. Our study applies these principles to a learned
+control component and adds two elements that are rare in the field: a frozen pre-registration and unit tests that prove
+the intended equivalences between variants.
+
+\subsection{Positioning}
+To our knowledge, no previous study re-examines MPHBS or its learned mediator, and no previous study analyses how
+per-iteration evaluation costs and state updates of random controls bias ablations of learned components.
+\pending{literature check with full texts: confirm this statement and add the closest studies.}
 
 %% =====================================================================
 \section{MPHBS and its published evidence}
 \label{sec:mphbs}
 
-\subsection{Algorithm}
-MPHBS evolves an HBA population and an MPA population of $N$ agents each. Every iteration consists of
-(i) the native HBA and MPA moves with greedy replacement and MPA's memory saving, in which an agent whose new position is
-worse than its stored memory reverts to it;
-(ii) a FAD perturbation stage of MPA, evaluated in place with greedy acceptance, placed before (CEC2022) or after (FIR)
-the mediator; and
-(iii) the mediator (Phase~2). The mediator draws ranked subsets of $N_\mathrm{sub}=\mathrm{round}(\rho N)$ agents from
-each population, starts from the global best, and runs $E=N_\mathrm{sub}N_i$ episodes. In each episode a block of
-dimensions is reassigned: $K$ candidate vectors are assembled by taking each active dimension from a (source, rank) pair
-chosen by one of several policies over the Q-table, a cheap proxy score selects one candidate, and only that candidate is
-evaluated. The reward is the sign of the improvement, worse candidates may be accepted with a small, decreasing
-probability, and the Q-table is updated by a SARSA rule. Accepted candidates replace the worst members of the subsets,
-which are written back to the populations at the end of Phase~2. With $N=30$ the final configurations are
-B-C1 on CEC2022 ($K=7$, $N_i=3$, $\rho=0.25$, so $N_\mathrm{sub}=8$ and $E=24$) and A-C1 on FIR ($K=3$, $N_i=9$, $E=72$),
-selected by the authors on the same benchmarks~\cite{flores2026mphbs}.
+\subsection{Notation}
+We minimise $f:\Omega\to\mathbb{R}$ over a box $\Omega=[\ell,u]^D$. MPHBS maintains an HBA population
+$X^H=\{x^H_1,\dots,x^H_N\}$ and an MPA population $X^M$ of $N$ agents each, with fitness values $f^H_i$, $f^M_i$, the
+best agents $p^H$, $p^M$ of each population and the global best $p^\star$ with value $f^\star$. MPA keeps a marine memory
+$(\tilde X^M, \tilde f^M)$. $t=0,\dots,T-1$ is the iteration, $T$ the number of iterations, $\mathrm{clip}$ the projection
+onto $\Omega$, $\odot$ the element-wise product and $U(a,b)$ a uniform random number.
 
-\subsection{Evidence for the role of learning}
-The authors evaluate a random mirror that, according to its description, keeps the backbone, candidate memories, proxy
-screening, acceptance rule and FAD placement, and only replaces the Q-table by uniform random choices of source and rank.
-Re-analysing their published 30 common-seed runs with paired Wilcoxon tests~\cite{wilcoxon1945} and Holm
-correction~\cite{holm1979} within each benchmark, SARSA is significantly better than the mirror on
-\res{auth-CEC2022-vsRANDOM-sigS} of \res{auth-CEC2022-n} CEC2022 functions (worse on \res{auth-CEC2022-vsRANDOM-sigC}),
-and on \res{auth-FIR-vsRANDOM-sigS} of \res{auth-FIR-n} FIR cases. On CEC2022 F10, a bimodal composition function, SARSA
-escapes the dominant local basin (final error $<50$) in \res{auth-F10-SARSA-esc}/30 runs against
-\res{auth-F10-RANDOM-esc}/30 for the mirror and \res{auth-F10-MPHB-esc}/30 for the backbone without mediator.
+\subsection{Native operators}
+\paragraph{HBA} With the intensity
+$I_i = r_i\,\|x^H_i - x^H_{i+1}\|^2 / (4\pi\|x^H_i - p^H\|^2 + \epsilon)$, the density factor
+$\alpha_t = C\exp(-(t+1)/T)$ with $C=2$, a random sign $F\in\{-1,1\}$ and $d_{ij}=p^H_j-x^H_{ij}$, each agent proposes
+\begin{equation}
+\hat x_{ij} = \begin{cases}
+p^H_j + F\beta I_i\,p^H_j + F r_3\alpha_t d_{ij}\,\psi_{ij} & r<0.5,\\
+p^H_j + F r_7\alpha_t d_{ij} & \text{otherwise},
+\end{cases}
+\label{eq:hba}
+\end{equation}
+with $\psi_{ij}=\bigl|\cos(2\pi r_4)\bigl(1-\cos(2\pi r_5)\bigr)\bigr|$, $\beta=6$ and
+$r,r_3,\dots,r_7\sim U(0,1)$, as in the authors' code. The proposal replaces $x^H_i$ if it is better.
+
+\paragraph{MPA} With the elite $E=p^M$, $P=0.5$, the adaptive factor $\mathrm{CF}_t=(1-t/T)^{2t/T}$, Brownian steps
+$R_B\sim\mathcal N(0,1)^{N\times D}$ and Lévy steps $R_L = 0.05\,\mathrm{L\acute evy}(1.5)$, an agent moves by
+\begin{equation}
+x^M_i \leftarrow \begin{cases}
+x^M_i + P R\odot R_B\odot(E - R_B\odot x^M_i) & \text{(I)},\\
+E + P\,\mathrm{CF}_t\,R_B\odot(R_B\odot E - x^M_i) & \text{(II)},\ i>\tfrac N2,\\
+x^M_i + P R\odot R_L\odot(E - R_L\odot x^M_i) & \text{(II)},\ i\le\tfrac N2,\\
+E + P\,\mathrm{CF}_t\,R_L\odot(R_L\odot E - x^M_i) & \text{(III)},
+\end{cases}
+\label{eq:mpa}
+\end{equation}
+where phases (I), (II), (III) are $t<T/3$, $T/3\le t<2T/3$ and $t\ge 2T/3$, and $R\sim U(0,1)^D$. After evaluation, \emph{memory saving} keeps the old position where it was better:
+\begin{equation}
+x^M_i \leftarrow \begin{cases}\tilde x^M_i & \tilde f^M_i < f(x^M_i),\\ x^M_i & \text{otherwise},\end{cases}
+\qquad (\tilde X^M,\tilde f^M)\leftarrow (X^M, f^M).
+\label{eq:memory}
+\end{equation}
+
+\paragraph{FAD stage} With probability $\mathrm{FADs}=0.2$ the population is perturbed by
+$\mathrm{CF}_t\,(\ell + R\odot(u-\ell))\odot B$ with a Bernoulli$(0.2)$ mask $B$, otherwise by
+$\bigl(\mathrm{FADs}(1-r)+r\bigr)(x^M_{\pi_1(i)}-x^M_{\pi_2(i)})$ for random permutations $\pi_1,\pi_2$. In MPHBS every
+candidate is evaluated and accepted greedily, and the memory is set to the result.
+
+\subsection{The SARSA mediator (Phase 2)}
+\paragraph{Ranked subsets} From each population, MPHBS draws a subset of
+$N_\mathrm{sub}=\min\bigl(N,\max(5,\mathrm{round}(\rho N))\bigr)$ agents, half of them the best and the rest at random,
+and sorts it by fitness. The subsets form a tensor $R\in\mathbb{R}^{N_\mathrm{sub}\times D\times 2}$, where
+$R_{n,d,c}$ is coordinate $d$ of the rank-$n$ agent of source $c\in\{H,M\}$.
+
+\paragraph{Episodes} The mediator starts from $v=p^\star$, evaluates it once and runs $E=N_\mathrm{sub}N_i$ episodes. The
+dimensions are split into five blocks (one if $D<10$) of size $b=\lceil D/5\rceil$, visited along a random permutation.
+In episode $e$ with active block $A_e$, $K$ candidates are assembled: candidate $k$ copies $v$ and sets
+$v'_d = R_{n_d,d,c_d}$ for $d\in A_e$, where $(c_d,n_d)$ is chosen by policy $\pi_k$ over the value table
+$Q\in\mathbb{R}^{D\times N_\mathrm{sub}\times 2}$: greedy, $\varepsilon$-greedy with
+$\varepsilon_e=\varepsilon_\mathrm{end}+(\varepsilon_0-\varepsilon_\mathrm{end})e^{-(e-1)/\max(1,E/4)}$, uniform,
+second-best, or $\varepsilon$-greedy at a look-ahead episode. A proxy score that costs no evaluation selects one
+candidate,
+\begin{equation}
+s(v') = -w_\mathrm{rank}\,\overline{(n_d+1)}_{d\in A_e} + w_\mathrm{nov}\,\overline{|v'_d-v_d|}_{d\in A_e}
+        - w_\mathrm{best}\,\|v'_{A_e}-p^\star_{A_e}\|_2,
+\label{eq:proxy}
+\end{equation}
+with $w_\mathrm{rank}=1$, $w_\mathrm{nov}=0.3$, and only that candidate is evaluated.
+
+\paragraph{Reward, acceptance and update} The reward is $r_e=\mathrm{sign}(f(v)-f(v'))$. An improving candidate is
+accepted; a worse one with probability
+\begin{equation}
+p_e = \min\Bigl(0.25,\ 0.2\,(1-g_t)^2\bigl(0.35+0.65(1-\lambda_e)\bigr)\exp\bigl(-4\max(0,\Delta_e)\bigr)\Bigr),
+\label{eq:accept}
+\end{equation}
+where $g_t=t/(T-1)$, $\lambda_e=(e-1)/(E-1)$ and $\Delta_e=(f(v')-f(v))/(|f(v)|+\epsilon)$. For every $d\in A_e$ the
+table is updated by the SARSA rule
+\begin{equation}
+Q_{d,n_d,c_d} \leftarrow Q_{d,n_d,c_d} + \alpha\bigl(r_e + \gamma\,Q_{d,n'_d,c'_d} - Q_{d,n_d,c_d}\bigr),
+\label{eq:sarsa}
+\end{equation}
+with $\alpha=0.1$, $\gamma=0.3$, where $(n'_d,c'_d)$ is the choice in $v'$ if it was accepted and $(n_d,c_d)$ otherwise.
+An accepted candidate replaces the worst member of each subset that it improves. A new global best is recorded and
+copied into a random subset row. At the end of Phase 2 the subsets are written back into the populations, and the bests
+are synchronised. Algorithm~\ref{alg:iteration} summarises one iteration and Algorithm~\ref{alg:mediator} the
+mediator.
+
+\begin{algorithm}[t]
+\caption{One iteration of MPHBS and of the study's arms. Lines marked with an arm apply only to that arm.}
+\label{alg:iteration}
+\small
+\begin{algorithmic}[1]
+\Require populations $X^H,X^M$, memory $(\tilde X^M,\tilde f^M)$, iteration $t$, configuration (FAD placement, $K$, $N_i$)
+\If{\textsc{RND-AUTH}} evaluate $X^M$ and apply memory saving \eqref{eq:memory} \Comment{$+N$ FEs}\EndIf
+\State HBA move \eqref{eq:hba} and MPA move \eqref{eq:mpa}; evaluate; greedy replacement; memory saving
+\eqref{eq:memory} \Comment{$2N$}
+\If{FAD before Phase 2 (CEC2022)} FAD stage with greedy acceptance; set memory \Comment{$N$}\EndIf
+\State $p^\star\gets$ best of $p^H,p^M$
+\If{not \textsc{SKEL}} \Call{Mediator}{} (Algorithm~\ref{alg:mediator}) \Comment{$1+E$}\EndIf
+\State write subsets back; synchronise $p^H,p^M,p^\star$
+\If{FAD after Phase 2 (FIR)} FAD stage with greedy acceptance; set memory \Comment{$N$}\EndIf
+\If{\textsc{RND-SYNC} or \textsc{SARSA-SYNC}} $(\tilde X^M,\tilde f^M)\gets(X^M,f^M)$ \Comment{0 FEs}\EndIf
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[t]
+\caption{Mediator (Phase 2) of MPHBS. The random arms replace line~\ref{line:policy} by uniform draws and skip
+line~\ref{line:sarsa}.}
+\label{alg:mediator}
+\small
+\begin{algorithmic}[1]
+\State build ranked subsets and tensor $R$; $v\gets p^\star$; $f_v\gets f(v)$ \Comment{1 FE}
+\For{$e=1,\dots,E$}
+  \State $A_e\gets$ next block of dimensions
+  \For{$k=1,\dots,K$}
+    \State $v^{(k)}\gets v$; for $d\in A_e$: $(c_d,n_d)\gets\pi_k(Q_{d,\cdot,\cdot})$; $v^{(k)}_d\gets R_{n_d,d,c_d}$
+    \label{line:policy}
+  \EndFor
+  \State $v'\gets\arg\max_k s(v^{(k)})$ \eqref{eq:proxy}; $f'\gets f(v')$ \Comment{1 FE}
+  \State $r_e\gets\mathrm{sign}(f_v-f')$; accept if $f'<f_v$, else with probability $p_e$ \eqref{eq:accept}
+  \State update $Q$ on $A_e$ by \eqref{eq:sarsa} \label{line:sarsa}
+  \If{accepted} $v\gets v'$, $f_v\gets f'$; replace the worst subset members that $v'$ improves\EndIf
+  \If{$f'<f^\star$} $p^\star\gets v'$; copy $v'$ into a random subset row\EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Configurations and published evidence}
+With $N=30$ the final configurations are B-C1 on CEC2022 ($K=7$, $N_i=3$, $\rho=0.25$, so $N_\mathrm{sub}=8$ and
+$E=24$; FAD before Phase 2) and A-C1 on FIR ($K=3$, $N_i=9$, $E=72$; FAD after Phase 2), both selected by the authors
+on the same benchmarks~\cite{flores2026mphbs}. The random mirror is described as identical except that source and rank
+are drawn uniformly. Re-analysing the authors' 30 common-seed runs per instance with paired Wilcoxon
+tests~\cite{wilcoxon1945} and Holm correction~\cite{holm1979}, SARSA is significantly better than the mirror on
+\res{auth-CEC2022-vsRANDOM-sigS} of \res{auth-CEC2022-n} CEC2022 functions and worse on
+\res{auth-CEC2022-vsRANDOM-sigC}, and not significantly different on any of the \res{auth-FIR-n} FIR cases. On CEC2022
+F10, a bimodal composition function, SARSA escapes the dominant local basin (final error below 50) in
+\res{auth-F10-SARSA-esc}/30 runs, the mirror in \res{auth-F10-RANDOM-esc}/30 and the backbone without mediator (MPHB) in
+\res{auth-F10-MPHB-esc}/30.
 
 %% =====================================================================
 \section{Why the published control is not matched}
 \label{sec:control}
 
-Reading \texttt{MPHBS\_main.m} and \texttt{MPHBS\_random\_mirror.m} side by side reveals two differences that the
-description of the mirror does not mention (Fig.~\ref{fig:loop}).
+\subsection{Evaluation budget}
+Runs are stopped by a total budget $B$ of FEs. The authors' runners choose $T$ as the largest number of iterations that
+fits into $B$, using a linear FE model calibrated by probing.
 
-\paragraph{Evaluation budget per iteration}
-MPHBS spends $3N+1+E$ evaluations per iteration: $2N$ for the native moves, $N$ for the evaluated FAD stage, one for
-re-evaluating the starting point of the mediator and $E$ for the episodes. The mirror additionally re-evaluates the whole
-MPA population at the start of every iteration, i.e.\ $4N+1+E$. Both are run for the largest number of iterations that
-fits the total budget, so the mirror runs $T=1378$ instead of $1738$ iterations on CEC2022 ($-21\%$) and $776$ instead of
-$919$ on FIR ($-16\%$), and performs correspondingly fewer mediator episodes. The authors' own result files confirm this:
-their mirror runs total \res{auth-CEC2022-RANDOM-fe} evaluations on CEC2022 and \res{auth-FIR-RANDOM-fe} on FIR, against
-\res{auth-CEC2022-SARSA-fe} and \res{auth-FIR-SARSA-fe} for MPHBS, exactly as these per-iteration costs predict.
+\begin{proposition}[Iterations under a fixed budget]
+\label{prop:iter}
+Let a variant spend $a$ FEs on initialisation and $c$ FEs per iteration. Under budget $B$ it runs
+$T=\lfloor (B-a)/c\rfloor$ iterations. MPHBS spends $c_\mathrm{S}=3N+1+E$ and the published mirror
+$c_\mathrm{R}=4N+1+E$, both with $a=2N$. The mirror therefore runs
+\begin{equation}
+\frac{T_\mathrm{R}}{T_\mathrm{S}} \approx \frac{3N+1+E}{4N+1+E}
+\label{eq:ratio}
+\end{equation}
+times as many iterations and episodes as MPHBS.
+\end{proposition}
+\begin{proof}
+Every iteration of MPHBS evaluates the $N$ HBA proposals, the $N$ moved MPA agents, the $N$ FAD candidates, the
+starting point of the mediator and the $E$ episode candidates. The mirror executes the same steps and, at the start of
+each iteration, evaluates the $N$ MPA agents again (lines 58--66 of \texttt{MPHBS\_random\_mirror.m}). The number of
+iterations follows from the stopping rule.
+\end{proof}
 
-\paragraph{Memory refresh}
-The re-evaluation returns values that are already known, but it is followed by MPA's memory-saving step, which sets the
-stored memory to the current population. Under the FIR configuration MPHBS performs the same update after its final FAD
-stage, so the extra block changes nothing except the budget. Under the CEC2022 configuration, however, MPHBS last updates
-the memory \emph{before} the mediator and never after it: in the next iteration, MPA agents that move to a worse position
-revert to their pre-mediator positions. The mirror instead reverts them to the post-mediator population. On CEC2022 the
-mirror therefore differs from MPHBS in two ways at once.
+\begin{corollary}
+\label{cor:deficit}
+With $N=30$: on CEC2022 ($E=24$, $B=200{,}000$) $c_\mathrm{S}=115$, $c_\mathrm{R}=145$, $T_\mathrm{S}=1738$ and
+$T_\mathrm{R}=1378$ ($-21\%$); on FIR ($E=72$, $B=150{,}000$) $c_\mathrm{S}=163$, $c_\mathrm{R}=193$, $T_\mathrm{S}=919$
+and $T_\mathrm{R}=776$ ($-16\%$). The resulting totals, \res{auth-CEC2022-RANDOM-fe} and \res{auth-FIR-RANDOM-fe} FEs for
+the mirror against \res{auth-CEC2022-SARSA-fe} and \res{auth-FIR-SARSA-fe} for MPHBS, are exactly those in the authors'
+result files.
+\end{corollary}
 
-\paragraph{Other differences}
-The mirror also omits the Q-table bookkeeping and the closest-action projection; once the Q-table is not used, these only
-set table indices and draw no random numbers, so they cannot affect the search. The global-best injection inside the
-mediator writes into subset rows that are overwritten at the end of Phase~2 in both codes; we verified with bit-identical
-re-runs that removing it has no effect (Section~\ref{sec:validation}).
+\subsection{Population memory}
+The extra evaluation recomputes values that are already known, but it is followed by memory saving, which sets the
+memory to the current population.
+
+\begin{proposition}[When the extra block matters]
+\label{prop:memory}
+With a deterministic objective, the mirror's start-of-iteration block (i) never changes a position and (ii) changes the
+algorithm's state only through the memory update $(\tilde X^M,\tilde f^M)\gets(X^M,f^M)$. If the FAD stage follows
+Phase 2 (FIR), MPHBS performs the same update before the block, so the block has no effect other than its cost. If the
+FAD stage precedes Phase 2 (CEC2022), MPHBS keeps the pre-Phase-2 memory, so the next memory saving compares moved MPA
+agents with their pre-mediator positions, whereas the mirror compares them with the post-mediator population.
+\end{proposition}
+\begin{proof}
+Between two evaluations of an MPA agent, its position changes only by Phase~2, which writes back subset members that
+are equal to or better than before. Hence the re-evaluation reproduces the stored values, $\tilde f^M_i<f^M_i$ never
+holds in the block's memory saving, and no position reverts. The memory is last set by the FAD stage. If that stage
+follows Phase 2, the memory already equals the current population when the block runs; otherwise it predates Phase 2.
+\end{proof}
+
+\begin{remark}
+The mirror also omits the value-table bookkeeping and a closest-action projection. Once the table is not used, these
+only set table indices and draw no random numbers, so they cannot affect the search. The global-best copy inside
+Algorithm~\ref{alg:mediator} writes into subset rows that are overwritten when the subsets are written back, in both codes.
+We confirmed Proposition~\ref{prop:memory} and the inertness of the copy with bit-identical re-runs
+(Section~\ref{sec:validation}).
+\end{remark}
 
 \begin{figure}[t]
 \centering
@@ -168,79 +370,113 @@ remove Phase~2 (SKEL), or refresh the MPA memory after Phase~2 at no cost (RND-S
 \label{sec:design}
 
 The design, hypotheses, run counts, statistics and decision rule were fixed in a pre-registration that was frozen and
-tagged in the public repository before any campaign run (Section~\ref{sec:availability}). We summarise it here; no
-analysis reported as confirmatory deviates from it.
+tagged in the public repository before any campaign run (Section~\ref{sec:availability}). No analysis reported as
+confirmatory deviates from it; analyses added afterwards are labelled post hoc.
 
 \subsection{Arms}
-All arms are implemented on a validated Python port of the authors' code (Section~\ref{sec:validation}) and use the
-authors' final configuration of each benchmark (Table~\ref{tab:arms}).
+All arms run on a Python port of the authors' code (Section~\ref{sec:validation}) with the authors' final configuration
+of each benchmark (Table~\ref{tab:arms}, Fig.~\ref{fig:loop}).
 \textbf{SARSA} is MPHBS unchanged.
-\textbf{RND-FAIR} draws source and rank uniformly at random for all $K$ candidates and never reads or updates a Q-table;
-everything else, including the evaluation cost, is identical to SARSA.
-\textbf{RND-SYNC} (CEC2022 only) is RND-FAIR plus the mirror's memory refresh, performed at zero evaluation cost because
-all fitness values are known; on FIR it would be identical to RND-FAIR.
-\textbf{RND-AUTH} is a faithful port of the authors' mirror, including the extra re-evaluation.
-\textbf{SKEL} is the MPHBS loop with Phase~2 removed.
-\textbf{MPHB} is the authors' backbone without mediator, whose loop differs from MPHBS's in that its FAD perturbation is
-not evaluated in place but replaces the population and is evaluated in the next iteration.
-Secondary arms vary the number of episodes ($N_i$), remove proxy screening ($K=1$), make the acceptance greedy, or add the
-memory refresh to SARSA (SARSA-SYNC).
+\textbf{RND-FAIR} draws $(c_d,n_d)$ uniformly for all $K$ candidates and never reads or updates $Q$; everything else,
+including the FE cost, is identical to SARSA.
+\textbf{RND-SYNC} (CEC2022 only) is RND-FAIR plus the mirror's memory update at zero cost; by
+Proposition~\ref{prop:memory} it would equal RND-FAIR on FIR.
+\textbf{RND-AUTH} ports the published mirror, including the extra evaluations.
+\textbf{SKEL} is the MPHBS loop without Phase~2.
+\textbf{MPHB} is the authors' backbone without mediator, whose FAD perturbation replaces the population and is only
+evaluated in the next iteration.
+Secondary arms vary $N_i\in\{1,3,9\}$, use $K=1$ (no proxy screening), use greedy acceptance, or add the memory update to
+SARSA (SARSA-SYNC).
 
 \input{generated/tab_arms.tex}
 
 \subsection{Hypotheses}
-Each hypothesis is a paired comparison of two arms (anchor first), tested separately on each benchmark:
-\textbf{H1} (learning) SARSA vs RND-FAIR;
-\textbf{H2a} (budget of the published mirror) RND-SYNC vs RND-AUTH on CEC2022 and RND-FAIR vs RND-AUTH on FIR, which
-differ only in the extra evaluations;
-\textbf{H2b} (memory refresh, CEC2022) RND-FAIR vs RND-SYNC;
-\textbf{H3} (mediator) SARSA vs SKEL;
-\textbf{H4} (loop) SKEL vs MPHB.
-H1--H4 are confirmatory. The escape rate on CEC2022 F10 (H5), the number of episodes (H6), the mediator's components (H7)
-and the memory refresh in SARSA (H8) are exploratory.
+Each hypothesis is a seed-paired comparison of an anchor arm with a comparator, tested separately on each benchmark.
+\begin{description}
+\item[H1 (learning)] SARSA vs RND-FAIR.
+\item[H2a (budget of the mirror)] RND-SYNC vs RND-AUTH on CEC2022 and RND-FAIR vs RND-AUTH on FIR; by
+  Proposition~\ref{prop:memory} each pair differs only in the extra FEs.
+\item[H2b (memory, CEC2022)] RND-FAIR vs RND-SYNC.
+\item[H3 (mediator)] SARSA vs SKEL.
+\item[H4 (loop)] SKEL vs MPHB.
+\end{description}
+H1--H4 are confirmatory. The F10 escape rate (H5), the number of episodes (H6), the mediator's components (H7) and the
+memory update in SARSA (H8) are exploratory.
 
 \subsection{Benchmarks, runs and seeds}
-CEC2022~\cite{kumar2021cec2022} F1--F12 at $D=20$ with 200{,}000 evaluations (official C code), and the eight FIR
-filter-design cases of~\cite{flores2026mphbs} (low-pass, high-pass, band-pass and band-stop, each in an easier and a harder
-variant) at $D=31$ with 150{,}000 evaluations. The outcome is the final
-error (CEC2022) or objective value (FIR). The H1 pair was run 100 times per instance and every other arm 50 times; F10
-was extended to 100 runs for the four H5 arms. Seeds are $\text{seed} = 92\,000\,000 + \text{offset} + 1000\cdot
-\text{instance} + \text{run}$, identical across arms, so all comparisons are seed-paired. The H1 run count was chosen so
-that a practical-equivalence claim has adequate power (pre-registration, Section~4).
+CEC2022~\cite{kumar2021cec2022} F1--F12 at $D=20$ with $B=200{,}000$ FEs, computed by the official C code; the outcome is
+the final error $f-f^\star$. The FIR problems of~\cite{flores2026mphbs} design a linear filter $h\in[-1,1]^{31}$
+(low-pass, high-pass, band-pass and band-stop, each in an easier and a harder variant) with $B=150{,}000$ FEs and the
+objective
+\begin{equation}
+F(h) = W_p\,\frac{1}{|P|}\sum_{n\in P}\bigl(|H(\omega_n)|-1\bigr)^2 + W_s\,\frac{1}{|S|}\sum_{n\in S}|H(\omega_n)|^2,
+\label{eq:fir}
+\end{equation}
+where $H$ is the 2048-point discrete Fourier transform of $h$, $P$ and $S$ are the pass- and stop-band grid points,
+$W_p=1$ and $W_s\in\{100,120\}$. The H1 pair was run 100 times per instance and every other arm 50 times; F10 was
+extended to 100 runs for the four H5 arms. Seeds are $92\,000\,000+\text{offset}+1000\cdot\text{instance}+\text{run}$ and
+identical across arms, so all comparisons are seed-paired.
 
 \subsection{Statistics and decision rule}
-For each instance we compute a two-sided paired Wilcoxon signed-rank test and the paired win probability
-$\hat w=(\text{wins}+0.5\,\text{ties})/n$ of the anchor; values within $10^{-12}$ are ties. $p$-values are Holm-adjusted
-within each (hypothesis, benchmark) family~\cite{holm1979,derrac2011tutorial}. The domain-level effect $\bar W$ is the mean
-of $\hat w$ over instances, with a 95\% percentile bootstrap interval~\cite{efron1979bootstrap} obtained by resampling runs
-within instances. The verdict is applied mechanically in this order: \emph{mixed} if Holm-significant instances favour both
-arms; \emph{anchor (comparator) superior} if at least one Holm-significant instance favours it and the interval for
-$\bar W$ lies entirely above (below) $0.5$; \emph{practically equivalent} if the interval lies within $[0.44, 0.56]$, the
-negligible-effect band of Vargha and Delaney~\cite{vargha2000}, and no instance is significant; otherwise
-\emph{inconclusive}. Escape rates (H5) are reported with Wilson intervals~\cite{wilson1927} and compared by an exact
-McNemar test~\cite{mcnemar1947}.
+For instance $j$ with $n$ seed pairs $(a_s,b_s)$ of anchor and comparator outcomes we compute the paired win
+probability and the median relative difference
+\begin{align}
+\hat w_j &= \frac{1}{n}\sum_{s=1}^{n}\Bigl(\mathbb 1[a_s<b_s-\tau] + \tfrac12\,\mathbb 1\bigl[|a_s-b_s|\le\tau\bigr]\Bigr),
+\label{eq:w}\\
+\hat\delta_j &= \operatorname*{median}_s \frac{b_s-a_s}{|b_s|},
+\label{eq:delta}
+\end{align}
+with $\tau=10^{-12}$, and a two-sided Wilcoxon signed-rank test. $p$-values are Holm-adjusted within each (hypothesis,
+benchmark) family of instances~\cite{holm1979,derrac2011tutorial}. The domain-level effect is
+$\bar W=\frac1J\sum_j\hat w_j$, with a 95\% percentile bootstrap interval~\cite{efron1979bootstrap} from 10{,}000
+resamples of seed pairs within instances. $\hat\delta_j$ is descriptive and was added after the pre-registration, because
+$\bar W$ measures the consistency of an effect but not its size.
+
+\begin{definition}[Verdict]
+\label{def:verdict}
+Let $n_A$ and $n_C$ be the numbers of Holm-significant instances with $\hat w_j>0.5$ and $\hat w_j<0.5$, and $[L,U]$ the
+interval for $\bar W$. The verdict is the first that applies: \emph{mixed} if $n_A>0$ and $n_C>0$; \emph{anchor superior}
+if $n_A>0$ and $L>0.5$; \emph{comparator superior} if $n_C>0$ and $U<0.5$; \emph{practically equivalent} if $n_A=n_C=0$
+and $[L,U]\subseteq[0.44,0.56]$, the negligible-effect band of Vargha and Delaney~\cite{vargha2000}; otherwise
+\emph{inconclusive}.
+\end{definition}
+
+With 100 pairs per instance, $\mathrm{SE}(\bar W)\le\sqrt{0.25/(100J)}$, which gives a probability of about 0.97 (CEC2022,
+$J=12$) and 0.85 (FIR, $J=8$) of an equivalence verdict when there is no effect. Escape rates are reported with Wilson
+intervals~\cite{wilson1927} and compared by an exact McNemar test~\cite{mcnemar1947}.
 
 \subsection{Execution and validation}
 \label{sec:validation}
 The campaign ran once on GitHub-hosted Linux runners in the pinned software environment (Python 3.11, NumPy 2.4.6),
-after the full test suite had passed there. The port's MPHBS reproduces the authors' evaluation totals exactly and their
-published run distributions~\cite{flores2026code}; the one known exception, a lower escape rate on F10, is examined in H5.
-Unit tests establish that (i) the variant code with default settings is bit-identical to the validated MPHBS port;
-(ii) every arm's evaluation total matches Table~\ref{tab:arms}; (iii) at a fixed number of iterations and on test problems, RND-AUTH produces
-trajectories bit-identical to RND-FAIR under the FIR configuration and to RND-SYNC under the CEC2022 configuration, so the re-evaluation itself has no effect
-other than its cost; and (iv) removing the writes of the global-best injection does not change any trajectory. All
-\res{runs-total} runs completed with the expected evaluation totals, and re-running the analysis on the stored raw results on a
-second machine reproduced all verdicts, effect sizes and intervals. RND-AUTH agrees with the authors' published mirror runs on every instance
-(two-sided Mann--Whitney, Holm; \res{V3-CEC2022-differ} of \res{V3-CEC2022-n} and \res{V3-FIR-differ} of \res{V3-FIR-n}
-instances differ).
+after the full test suite had passed there. The port's MPHBS reproduces the authors' FE totals exactly and their
+published run distributions~\cite{flores2026code}; the one known exception, a lower escape rate on F10, is examined in
+H5. Unit tests establish that (i) the variant code with default settings is bit-identical to the validated MPHBS port;
+(ii) every arm's FE total matches Table~\ref{tab:arms}; (iii) at a fixed number of iterations and on test problems,
+RND-AUTH produces trajectories bit-identical to RND-FAIR under the FIR configuration and to RND-SYNC under the CEC2022
+configuration, confirming Proposition~\ref{prop:memory}; and (iv) removing the global-best copy does not change any
+trajectory. All \res{runs-total} runs completed with the expected FE totals, and re-running the analysis on the stored
+raw results on a second machine reproduced all verdicts, effect sizes and intervals. RND-AUTH agrees with the authors'
+published mirror runs on every instance (two-sided Mann--Whitney, Holm; \res{V3-CEC2022-differ} of \res{V3-CEC2022-n}
+and \res{V3-FIR-differ} of \res{V3-FIR-n} instances differ).
 
 %% =====================================================================
 \section{Results}
 \label{sec:results}
 
-Table~\ref{tab:primary} lists the confirmatory verdicts and Fig.~\ref{fig:instances} the per-instance effects.
+Table~\ref{tab:primary} lists the confirmatory verdicts, Fig.~\ref{fig:forest} summarises all contrasts and
+Fig.~\ref{fig:instances} shows the per-instance effects. Figs.~\ref{fig:conv-cec}--\ref{fig:final-fir} show convergence
+and final-value distributions of the main arms, and Appendix~\ref{app:tables} reports all per-instance statistics.
 
 \input{generated/tab_primary.tex}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/fig_forest.pdf}
+\caption{Mean paired win probability $\bar W$ of the first arm with 95\% bootstrap interval for every contrast
+(circles: confirmatory; squares: exploratory; blue/orange: interval above/below 0.5). The shaded band is the
+negligible-effect band used by the decision rule.}
+\label{fig:forest}
+\end{figure*}
 
 \begin{figure*}[t]
 \centering
@@ -251,113 +487,241 @@ $\bar W$ and its 95\% bootstrap interval; the dotted line marks no difference.}
 \label{fig:instances}
 \end{figure*}
 
-\subsection{H1: learning}
+\subsection{RQ1: learning (H1)}
 At equal budget, SARSA does not outperform random assembly on either benchmark. On CEC2022 SARSA's mean paired win
 probability is \res{H1-CEC2022-wbar} \res{H1-CEC2022-ci}, and on FIR \res{H1-FIR-wbar} \res{H1-FIR-ci}. Both intervals lie
-below $0.5$ and one instance per benchmark is significant in favour of the random mediator (CEC2022 F3, FIR case 1;
-Table~\ref{tab:h1}), so the pre-registered verdict is \emph{comparator superior} on both. The effect is small: no
-instance favours SARSA, and the median errors of the two arms are close on most instances.
+below 0.5 and one instance per benchmark is significant in favour of the random mediator (CEC2022 F3, FIR case 1;
+Table~\ref{tab:h1}), so the pre-registered verdict is \emph{comparator superior} on both. The effect is small: the median
+relative difference is $\res{H1-CEC2022-rel}$ on CEC2022 and $\res{H1-FIR-rel}$ on FIR (negative: SARSA's error is
+higher), no instance favours SARSA, and the convergence curves of the two arms are close throughout the run
+(Figs.~\ref{fig:conv-cec} and~\ref{fig:conv-fir}).
 
 \input{generated/tab_h1.tex}
 
-\subsection{H2: the published mirror}
-With the memory refresh held fixed, the extra evaluations of the published mirror do not produce a conclusive difference
-on CEC2022 ($\bar W=\res{H2a-CEC2022-wbar}$ \res{H2a-CEC2022-ci}, verdict \emph{inconclusive}). On FIR, where the
-re-evaluation affects only the budget, the budget-identical random mediator is better than the published mirror
-($\bar W=\res{H2a-FIR-wbar}$ \res{H2a-FIR-ci}, \emph{anchor superior}). The memory refresh, by contrast, has a large effect on
-CEC2022 (H2b): random assembly \emph{without} the refresh beats the same mediator with it on
-\res{H2b-CEC2022-siga} of 12 functions ($\bar W=\res{H2b-CEC2022-wbar}$ \res{H2b-CEC2022-ci}), for instance on F5 with median
-errors of \res{H2b-CEC2022-i5-amed} and \res{H2b-CEC2022-i5-cmed}. Because \res{H2b-CEC2022-sigc} functions (F1, F11) favour
-the refresh, the verdict is \emph{mixed}. Together, H2a and H2b explain the published SARSA-versus-mirror difference on
-CEC2022 without any contribution of learning: the published mirror carries a handicap that is mostly due to the memory
-refresh on CEC2022 and to the reduced budget on FIR.
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_convergence_cec.pdf}
+\caption{Median best-so-far error over 50 runs on CEC2022 as a function of the consumed FE budget (log scale).}
+\label{fig:conv-cec}
+\end{figure*}
 
-\subsection{H3 and H4: what does matter}
+
+\subsection{RQ2: the published mirror (H2)}
+With the memory update held fixed, the extra FEs of the published mirror do not produce a conclusive difference on
+CEC2022 ($\bar W=\res{H2a-CEC2022-wbar}$ \res{H2a-CEC2022-ci}, \emph{inconclusive}). On FIR, where by
+Proposition~\ref{prop:memory} the extra block affects only the budget, the budget-identical random mediator is better than
+the published mirror ($\bar W=\res{H2a-FIR-wbar}$ \res{H2a-FIR-ci}, \emph{anchor superior}; median relative difference
+$\res{H2a-FIR-rel}$). The memory update, by contrast, has a large effect on CEC2022 (H2b): random assembly \emph{without}
+the update beats the same mediator with it on \res{H2b-CEC2022-siga} of 12 functions
+($\bar W=\res{H2b-CEC2022-wbar}$ \res{H2b-CEC2022-ci}; median relative difference $\res{H2b-CEC2022-rel}$), for instance on
+F5 with median errors of $\res{H2b-CEC2022-i5-amed}$ and $\res{H2b-CEC2022-i5-cmed}$. Because \res{H2b-CEC2022-sigc}
+functions (F1, F11) favour the update, the verdict is \emph{mixed}.
+
+H2a and H2b together explain the published SARSA-versus-mirror difference without any contribution of learning: the
+published mirror carries a handicap that is due mostly to the memory update on CEC2022 and to the reduced budget on FIR.
+RND-AUTH's F10 escape rate (below) and its agreement with the authors' runs support this account.
+
+\subsection{RQ3: what does matter (H3, H4)}
 Removing the mediator altogether is very costly on FIR: SARSA beats SKEL on all eight cases
-($\bar W=\res{H3-FIR-wbar}$ \res{H3-FIR-ci}). On CEC2022 the effect is mixed ($\bar W=\res{H3-CEC2022-wbar}$): the mediator
-helps on F1, F3, F9 and F10 and hurts on F5 and F7. The exchange of information between the two populations is therefore
-useful, but the evidence indicates that its value does not depend on learned choices of source and rank.
+($\bar W=\res{H3-FIR-wbar}$ \res{H3-FIR-ci}), and the median relative difference of $\res{H3-FIR-rel}$ means that the
+mediator roughly halves the final objective value (Fig.~\ref{fig:final-fir}). On CEC2022 the effect is mixed
+($\bar W=\res{H3-CEC2022-wbar}$): the mediator helps markedly on F1 and F3 (Fig.~\ref{fig:conv-cec}), also on F9 and F10,
+and hurts on F5 and F7. Exchanging information between the two populations is therefore useful, but its value does not
+depend on learned choices of source and rank.
 
-The restructured loop is itself a large source of improvement. SKEL, which has no mediator, beats MPHB on every CEC2022
-function ($\bar W=\res{H4-CEC2022-wbar}$ \res{H4-CEC2022-ci}) and every FIR case ($\bar W=\res{H4-FIR-wbar}$
-\res{H4-FIR-ci}). The two loops differ mainly in whether the FAD perturbation is evaluated with greedy acceptance; this change
-therefore accounts for part of the advantage of MPHBS over its backbone that a comparison of MPHBS with MPHB alone would
-attribute to the mediator.
+The restructured loop is consistently but negligibly better than the original backbone. SKEL beats MPHB on every CEC2022
+function and every FIR case ($\bar W=\res{H4-CEC2022-wbar}$ and \res{H4-FIR-wbar}, \emph{anchor superior}), but the
+median relative differences are $\res{H4-CEC2022-rel}$ and $\res{H4-FIR-rel}$ (largest instance
+$\res{H4-CEC2022-relmax}$): with shared seeds the two loops produce nearly identical trajectories, and the greedy
+evaluation of the FAD stage in SKEL removes only rare deteriorations. The pre-registered verdict is correct as a statement
+about consistency, but the effect is of no practical relevance; the advantage of MPHBS over MPHB comes from the mediator
+(H3), not from the loop.
+
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_final_fir.pdf}
+\caption{Distributions of the final objective value on the FIR problems for the primary arms (runs 1--50, log scale).}
+\label{fig:final-fir}
+\end{figure*}
 
 \subsection{Exploratory results (H5--H8)}
-\textbf{F10 escapes.} SARSA escapes the local basin of F10 in \res{H5-SARSA-esc}/\res{H5-SARSA-n} runs
-(Wilson 95\% interval \res{H5-SARSA-ci}) and RND-FAIR in \res{H5-RND-FAIR-esc}/\res{H5-RND-FAIR-n} (\res{H5-RND-FAIR-ci};
-exact McNemar $p=\res{H5-mcnemar-p}$); RND-AUTH escapes in \res{H5-RND-AUTH-esc}/\res{H5-RND-AUTH-n} and SKEL in
-\res{H5-SKEL-esc}/\res{H5-SKEL-n}. Escaping requires the mediator but not learning. The authors' 17/30 escapes for SARSA are
-inconsistent with our 100-seed estimate (binomial $p=\res{H5-binom-p}$); since our port reproduces their other published
-distributions, we regard their single F10 sample as unrepresentative but cannot rule out a platform-dependent effect.
+\paragraph{F10 escapes (H5)} SARSA escapes the local basin of F10 in \res{H5-SARSA-esc}/\res{H5-SARSA-n} runs (Wilson
+interval \res{H5-SARSA-ci}) and RND-FAIR in \res{H5-RND-FAIR-esc}/\res{H5-RND-FAIR-n} (\res{H5-RND-FAIR-ci}; exact
+McNemar $p=\res{H5-mcnemar-p}$); RND-AUTH escapes in \res{H5-RND-AUTH-esc}/\res{H5-RND-AUTH-n} and SKEL in
+\res{H5-SKEL-esc}/\res{H5-SKEL-n} (Fig.~\ref{fig:f10}). Escaping requires the mediator but not learning, and the published
+mirror's low escape rate is reproduced. The authors' 17/30 for SARSA is inconsistent with our 100-seed estimate (binomial
+$p=\res{H5-binom-p}$); since our port reproduces their other published distributions, we regard their single F10 sample
+as unrepresentative but cannot rule out a platform-dependent effect.
 
-\textbf{Mediator components and budget.} Removing proxy screening (H7, $K=1$) or relaxed acceptance leaves performance
-practically unchanged or inconclusive (Table~\ref{tab:secondary}). Fewer episodes per iteration are clearly worse on FIR
-($N_i=1$ vs $9$: $\bar W=\res{H6-RND-Ni1-vs-default-FIR-wbar}$ \res{H6-RND-Ni1-vs-default-FIR-ci}), whereas no tested $N_i$
-shows a consistent advantage of SARSA over random assembly (Table~\ref{tab:secondary}).
+\begin{figure}[t]
+\centering
+\includegraphics[width=\columnwidth]{figures/fig_f10.pdf}
+\caption{Escape rate on CEC2022 F10 (final error below 50) with 95\% Wilson intervals; filled markers: this study,
+hollow markers: the authors' published runs.}
+\label{fig:f10}
+\end{figure}
 
-\textbf{Memory refresh in SARSA.} Adding the zero-cost refresh to SARSA reproduces the H2b pattern
-(H8, $\bar W=\res{H8-CEC2022-wbar}$ \res{H8-CEC2022-ci}): the stale memory of MPHBS is beneficial on most CEC2022 functions.
-\pending{diversity diagnostic: population diversity and reversion counts per iteration for SARSA vs SARSA-SYNC, from the
-stored traces, to test the explanation below.}
+\paragraph{Amount of exchange (H6)} Fewer episodes per iteration are clearly worse on FIR ($N_i=1$ vs the default $9$:
+$\bar W=\res{H6-RND-Ni1-vs-default-FIR-wbar}$ \res{H6-RND-Ni1-vs-default-FIR-ci}), while no tested $N_i$ shows a
+consistent advantage of SARSA over random assembly (Fig.~\ref{fig:dose}, Table~\ref{tab:secondary}).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/fig_dose.pdf}
+\caption{Effect of the number of mediator episodes per subset member, $N_i$ (H6). Circles: SARSA vs RND-FAIR at the same
+$N_i$; squares: RND-FAIR at $N_i$ vs RND-FAIR at the default $N_i$ of the benchmark.}
+\label{fig:dose}
+\end{figure*}
+
+\paragraph{Mediator components (H7)} Removing proxy screening ($K=1$) or relaxed acceptance leaves performance practically
+unchanged or inconclusive (Table~\ref{tab:secondary}).
+
+\paragraph{Memory update in SARSA (H8)} Adding the zero-cost update to SARSA reproduces the H2b pattern
+($\bar W=\res{H8-CEC2022-wbar}$ \res{H8-CEC2022-ci} for SARSA-SYNC vs SARSA): MPHBS's stale memory is beneficial on most
+CEC2022 functions.
 
 \input{generated/tab_secondary.tex}
+
+\subsection{Post hoc diagnostic: memory and diversity}
+\label{sec:diversity}
+To probe the mechanism behind H2b and H8 we analysed the stored per-iteration traces of RND-FAIR/RND-SYNC and
+SARSA/SARSA-SYNC on CEC2022. The analysis was defined and committed before it was computed (after opening a single run to
+learn the trace format) but after the confirmatory results were known. We measure the pooled diversity
+\begin{equation}
+\mathrm{div}_t = \frac1D\sum_{d=1}^{D}\frac{\operatorname{sd}\bigl(\{x_{d}: x\in X^H_t\cup X^M_t\}\bigr)}{u_d-\ell_d}
+\label{eq:div}
+\end{equation}
+and the MPA move-acceptance rate, the share of Phase-1 MPA moves that survive memory saving \eqref{eq:memory}.
+
+With the stale memory of MPHBS, the mean log-diversity over the run is higher on all \res{div-RND-moresig} functions for
+the random pair and all \res{div-SARSA-moresig} for the SARSA pair (Holm-significant; median difference
+\res{div-RND-dlog} and \res{div-SARSA-dlog} orders of magnitude), and the MPA acceptance rate is higher on all
+\res{div-RND-accsig} functions (medians \res{div-RND-acc-stale}\% vs \res{div-RND-acc-fresh}\%). With the refreshed memory,
+diversity falls by several orders of magnitude within the first 20--45\% of the run and reaches about $10^{-10}$ on eight of
+the twelve functions (Fig.~\ref{fig:diversity}).
+The size of the diversity gap, however, does not predict which functions benefit from the stale memory (Spearman
+$\rho=\res{div-RND-rho}$, $p=\res{div-RND-rhop}$, $n=12$): F1 and F11 lose diversity like the others yet favour the
+refresh. The mechanism is thus consistent with the direction of the effect on most functions but does not explain its
+size per function.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/fig_diversity.pdf}
+\caption{Median log$_{10}$ pooled diversity \eqref{eq:div} over 50 runs on CEC2022 for random assembly with MPHBS's stale
+MPA memory (RND-FAIR) and with the memory refreshed after Phase~2 (RND-SYNC). * Holm-significant difference in mean
+log-diversity. Post hoc, exploratory.}
+\label{fig:diversity}
+\end{figure*}
 
 %% =====================================================================
 \section{Discussion}
 \label{sec:discussion}
 
 \subsection{What drives MPHBS}
-Three components carry the performance of MPHBS on these benchmarks: exchanging information between the two populations
-at all, the amount of exchange per iteration, and the evaluated FAD stage of its loop. The SARSA controller is not among
-them: random choices of source and rank are at least as good. A plausible reason is the reward signal. It is the sign of
-the improvement of a single assembled vector over the current one, which says little about which (source, rank) pair
-helped, while the proxy screening and the acceptance rule already bias the search towards good candidates.
+Three components carry the performance of MPHBS on these benchmarks: exchanging information between the two
+populations at all (decisive on FIR), the amount of exchange per iteration, and the way the MPA memory interacts with the
+mediator. The SARSA controller and the restructured loop are not among them.
 
-The memory finding suggests a mechanism. When MPHBS leaves the memory stale, MPA agents that move to worse positions
-revert to where they were before the mediator rather than to the post-mediator population, whose subset rows the mediator
-has filled with copies of vectors close to the incumbent. The stale memory may therefore preserve diversity. This
-explanation is exploratory and is tested by the pending diagnostic above.
+\paragraph{Why learning does not help}
+The value table has $D\cdot N_\mathrm{sub}\cdot 2$ entries (320 on CEC2022, 496 on FIR) and receives
+$b=\lceil D/5\rceil$ updates per episode, i.e.\ about $T E b/(2DN_\mathrm{sub})\approx 520$ updates per entry on CEC2022
+and 930 on FIR. Data are therefore not scarce. The reward, however, is the sign of the change of a whole assembled vector,
+shared equally by all $b$ dimensions of the block, and the evaluated candidate was itself chosen by the proxy score from
+$K$ candidates generated by different policies. The credit that reaches an individual (dimension, rank, source) entry is
+thus heavily diluted, and the most informative choices, taking coordinates from good agents, are already enforced by the
+ranked subsets and the rank term of the proxy score \eqref{eq:proxy}. Under these conditions a learned policy has little
+to add over uniform choices, consistent with the difficulties of credit assignment reported for adaptive operator
+selection~\cite{fialho2010bandit}.
 
-\subsection{Requirements for ablation controls of learned components}
-\begin{enumerate}
-\item \textbf{Match the cost per iteration, not only the total budget.} When runs are cut by a total evaluation budget,
-  any extra evaluation per iteration silently reduces the number of iterations of the control.
-\item \textbf{Match every state update.} A control should be derived from the learned variant by removing the learning,
-  not written as a separate program; side effects such as memory or archive updates must be identical.
-\item \textbf{Verify equivalence mechanically.} With fixed seeds, the control with learning ``switched off'' in the same
-  code path, and unit tests showing bit-identical trajectories where no difference is intended, rule out accidental
-  differences.
-\item \textbf{Separate the learned component from the mechanism it controls.} A no-mediator arm and a random-policy arm
-  answer different questions (H3 vs H1); both are needed.
-\item \textbf{Fix the analysis in advance.} Pre-registered hypotheses, run counts and decision rules prevent post hoc
-  selection of the favourable comparison~\cite{nosek2018preregistration,lopezibanez2021reproducibility,bartzbeielstein2020benchmarking}.
-\end{enumerate}
+\paragraph{Why the stale memory helps}
+With the stale memory, an MPA agent whose move fails returns to its pre-mediator position, which is typically far from
+the incumbent, whereas with the refreshed memory it returns to the post-mediator population, whose subset rows the
+mediator has filled with vectors close to the incumbent. The diagnostic in Section~\ref{sec:diversity} shows the expected
+consequence: the refreshed memory makes the population collapse, which on most functions is premature convergence in the
+sense of the exploration--exploitation literature~\cite{crepinsek2013exploration}. On F1 (Zakharov), a unimodal function,
+faster collapse is an advantage, which fits the two exceptions only partly (F11 is a composition function). The design of
+MPHBS benefits from this property, apparently by accident: it is neither described nor motivated in the original paper.
+
+\subsection{Matched controls for learned components}
+The published mirror illustrates two ways in which a control can differ from the learned variant without anybody
+intending it. We make the requirements explicit.
+
+\begin{definition}[Matched control]
+\label{def:matched}
+Let $\mathcal A$ be an algorithm whose decisions in a component $\mathcal C$ are taken by a learned policy, and
+$\mathcal A_0$ the same algorithm with $\mathcal C$'s decisions drawn from a reference distribution. $\mathcal A_0$ is
+\emph{budget-matched} if both variants spend the same number of FEs in every iteration, so that they run the same number
+of iterations under the same budget, and \emph{state-matched} if, given the same decisions, both variants perform the same
+updates of every state variable outside the learned component (populations, memories, archives, parameters). A control
+that is budget- and state-matched isolates the effect of learning.
+\end{definition}
+
+Algorithm~\ref{alg:protocol} turns the definition into a procedure; the unit tests of our study implement its
+budget and inertness checks (Section~\ref{sec:validation}).
+
+\begin{algorithm}[t]
+\caption{Constructing and verifying a matched control for a learned component}
+\label{alg:protocol}
+\small
+\begin{algorithmic}[1]
+\Require implementation of $\mathcal A$ with learned component $\mathcal C$; reference distribution $q$
+\Ensure control $\mathcal A_0$ and evidence that it is matched
+\State implement $\mathcal A_0$ as a switch in the code path of $\mathcal A$ that replaces $\mathcal C$'s decisions by
+  draws from $q$ and disables only the learning updates (no separate program)
+\State \textbf{budget check:} measure FEs per iteration of $\mathcal A$ and $\mathcal A_0$ on a probe problem; require equality
+  and identical $T$ under every budget used
+\State \textbf{state check:} with $q$ set to the decisions of $\mathcal A$ (replay), require bit-identical trajectories of
+  $\mathcal A$ and $\mathcal A_0$ for fixed seeds
+\State \textbf{inertness checks:} for every difference not intended to matter, require bit-identical trajectories with and
+  without it
+\State \textbf{no-component arm:} add a variant without $\mathcal C$ to separate the value of the mechanism from that of learning
+\State fix hypotheses, run counts and decision rule before running; report magnitudes alongside consistency measures
+\end{algorithmic}
+\end{algorithm}
+
+Applied to the published mirror, the budget check would have exposed the extra $N$ FEs, and the state check, which
+replays SARSA's decisions, would have exposed the memory update. A further lesson concerns effect sizes: a paired, seed-matched
+design detects extremely consistent but tiny effects such as H4. Consistency measures like $\bar W$ should therefore always
+be accompanied by magnitudes such as $\hat\delta$ in \eqref{eq:delta}.
+
+\subsection{Implications for the design of hybrids}
+The results suggest simplifications of MPHBS without loss: the value table can be replaced by uniform choices of source and
+rank, and the number of episodes is a more important parameter than the controller. Conversely, the treatment of the MPA
+memory deserves to be a deliberate design decision, because it controls population diversity and has a larger effect than
+the learning. More generally, in learned hybrids the mechanism that a learned controller steers (here: dimension-wise
+exchange) can be valuable even when the learning is not, and the two should be evaluated separately.
 
 \subsection{Threats to validity}
-\textbf{Scope.} We study one hybrid, two benchmark sets at one dimension each, and the authors' final configurations.
-Those configurations were selected with SARSA on the same benchmarks, which favours SARSA and makes H1 conservative.
+\paragraph{Scope} We study one hybrid, two benchmark sets at one dimension each, and the authors' final configurations.
+Those configurations were selected with SARSA on the same benchmarks, which favours SARSA and makes H1 conservative. No free
+lunch results~\cite{wolpert1997nfl} caution against generalising beyond the problems studied.
 \pending{exploratory BBOB extension~\cite{hansen2021coco} to test whether H1 generalises.}
-\textbf{Port.} Our results use a Python port; agreement with the authors' MATLAB runs is distributional because random
-streams differ. The port reproduces the authors' totals and run distributions, and RND-AUTH reproduces their mirror on
-all instances.
-\textbf{Effect sizes.} The H1 effect is small; we claim the absence of a benefit of learning, not a large benefit of random
-choice.
-\textbf{Exploratory parts.} H5--H8 and the memory mechanism are exploratory and should be confirmed independently.
+
+\paragraph{Port and platform} Our results use a Python port; agreement with the authors' MATLAB runs is distributional
+because random streams differ. The port reproduces the authors' FE totals and run distributions, and RND-AUTH reproduces
+their mirror on all instances. The F10 discrepancy (H5) remains unexplained.
+
+\paragraph{Statistics} The H1 effect is small; we claim the absence of a benefit of learning, not a large benefit of random
+choice. The relative difference $\hat\delta$ was added after the pre-registration and is descriptive.
+
+\paragraph{Exploratory parts} H5--H8 and the diversity diagnostic are exploratory and should be confirmed independently.
 
 %% =====================================================================
 \section{Conclusion}
-The learned controller of MPHBS does not improve on random choices at equal budget on CEC2022 or FIR; the published
-evidence for it rests on a control that is handicapped by its evaluation budget and, on CEC2022, by a memory update.
-MPHBS's advantage comes from exchanging information between its populations and from its restructured loop. More
-generally, ablations of learned components in metaheuristics should match the per-iteration cost and every state update
-of the learned variant, and should be verified mechanically and fixed in advance.
+\label{sec:conclusion}
+The learned controller of MPHBS does not improve on random choices at an equal budget on CEC2022 or FIR. The published
+evidence for it rests on a control that is handicapped by its evaluation budget and, under the CEC2022 configuration, by a
+memory update that collapses population diversity. MPHBS's performance comes from exchanging information between its
+populations, from the amount of exchange, and from its handling of the population memory; its restructured loop is
+consistently but negligibly better than the original backbone. More generally, ablations of learned components in
+metaheuristics should be budget- and state-matched, verified mechanically, fixed in advance and reported with effect
+magnitudes.
 
 \section*{Data and code availability}
 \label{sec:availability}
-Code, the frozen pre-registration (tag \texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analysis and
-the scripts that generate every number, table and figure in this paper are available at
+Code, the frozen pre-registration (tag \texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analyses and the
+scripts that generate every number, table and figure in this paper are available at
 \url{https://github.com/abinaya-g/la-kaie} (campaign commit \texttt{\res{commit}}). \pending{archive a release on Zenodo and
 cite its DOI.}
 
@@ -368,8 +732,50 @@ cite its DOI.}
 \pending{declaration.}
 
 \section*{Acknowledgements}
-We thank the authors of MPHBS for publishing their code and per-run results, without which this study would not have
-been possible. \pending{funding; whether the MPHBS authors were contacted before submission.}
+We thank the authors of MPHBS for publishing their code and per-run results, without which this study would not have been
+possible. \pending{funding; whether the MPHBS authors were contacted before submission.}
+
+\appendix
+\section{Detailed results}
+\label{app:tables}
+
+Figs.~\ref{fig:conv-fir} and~\ref{fig:final-cec} complement Figs.~\ref{fig:conv-cec} and~\ref{fig:final-fir}.
+Tables~\ref{tab:meanstd-cec2022} and~\ref{tab:meanstd-fir} give mean and standard deviation of the final value per arm.
+Tables~\ref{tab:inst-h2a-cec2022}--\ref{tab:inst-h4-fir} give the per-instance statistics of the confirmatory contrasts
+H2a--H4 (H1 is in Table~\ref{tab:h1}).
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_convergence_fir.pdf}
+\caption{Median best-so-far objective over 50 runs on the FIR problems as a function of the consumed FE budget.}
+\label{fig:conv-fir}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_final_cec.pdf}
+\caption{Distributions of the final error on CEC2022 for the primary arms (runs 1--50, log scale).}
+\label{fig:final-cec}
+\end{figure*}
+
+\input{generated/tab_meanstd_cec.tex}
+\input{generated/tab_meanstd_fir.tex}
+\input{generated/tab_inst_H2a_CEC2022.tex}
+\input{generated/tab_inst_H2a_FIR.tex}
+\input{generated/tab_inst_H2b_CEC2022.tex}
+\input{generated/tab_inst_H3_CEC2022.tex}
+\input{generated/tab_inst_H3_FIR.tex}
+\input{generated/tab_inst_H4_CEC2022.tex}
+\input{generated/tab_inst_H4_FIR.tex}
+
+\section{Reproducibility details}
+\label{app:repro}
+Software: Python 3.11.17, NumPy 2.4.6, SciPy 1.17.1, pandas 3.0.6 on Ubuntu (GitHub-hosted runners, 4 vCPUs). Random
+numbers: NumPy PCG64 seeded per run with the formula of Section~\ref{sec:design}; parallel execution does not affect
+results because every run is seeded independently. The authors' MATLAB code (commit \texttt{b3e96ca}) and per-run results
+are included in the repository under \path{third_party/}. The campaign was run as a single attempt by the workflow
+\path{.github/workflows/pathA-campaign.yml}, which refuses to start while the pre-registration is not frozen, runs the
+full test suite first and refuses to compute verdicts if any run is missing or has an unexpected FE total.
 
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
