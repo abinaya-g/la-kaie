@@ -29,7 +29,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from lakaie.experiment import load_yaml, resolve_method, run_single, seed_for  # noqa: E402
 
-BENCH_CFG = {"CEC2022": "cec2022.yaml", "FIR": "fir.yaml"}
+BENCH_CFG = {"CEC2022": "cec2022.yaml", "FIR": "fir.yaml",
+             "BBOB-D10": "bbob_d10.yaml", "BBOB-D20": "bbob_d20.yaml"}
 
 
 def git_hash():

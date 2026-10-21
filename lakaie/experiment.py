@@ -50,8 +50,10 @@ def lakaie_config(variant: str = "Full", overrides: dict | None = None) -> dict:
 
 
 def pathA_arm(label: str, bench_cfg: dict):
-    """Path A arm (configs/pathA.yaml): (family, domain config of `base` + flags, expected (T, FE))."""
-    arms = load_yaml("pathA.yaml")["arms"][bench_cfg["benchmark"]]
+    """Path A arm (configs/pathA.yaml; BBOB arms in configs/pathA_bbob.yaml):
+    (family, domain config of `base` + flags, expected (T, FE))."""
+    src = "pathA_bbob.yaml" if bench_cfg["benchmark"].startswith("BBOB-D") else "pathA.yaml"
+    arms = load_yaml(src)["arms"][bench_cfg["benchmark"]]
     if label not in arms:
         raise KeyError(f"{label} is not a Path A arm for {bench_cfg['benchmark']}")
     arm = arms[label]
@@ -70,11 +72,14 @@ def resolve_method(label: str, bench_cfg: dict, overrides: dict | None = None):
     return label, copy.deepcopy(bench_cfg["methods"][label])
 
 
-def make_problem(benchmark: str, instance: int, dim: int | None = None):
+def make_problem(benchmark: str, instance: int, dim: int | None = None, run: int | None = None):
     if benchmark == "CEC2022":
         return CEC2022Problem(instance, dim or 20)
     if benchmark == "FIR":
         return FIRProblem(instance)
+    if benchmark.startswith("BBOB-D"):
+        from .benchmarks.bbob import BBOBProblem, instance_for_run
+        return BBOBProblem(instance, int(benchmark[len("BBOB-D"):]), instance_for_run(run or 1))
     raise KeyError(benchmark)
 
 
@@ -104,7 +109,7 @@ def run_single(task: dict) -> dict:
     if jpath.exists():
         return {"status": "exists", "path": str(jpath)}
     jpath.parent.mkdir(parents=True, exist_ok=True)
-    problem = make_problem(task["benchmark"], task["instance"], task.get("dim"))
+    problem = make_problem(task["benchmark"], task["instance"], task.get("dim"), task.get("run"))
     max_fe = int(task["max_fes"])
     obj = CountedObjective(problem, max_fe, make_checkpoints(max_fe, task.get("n_checkpoints", 200)))
     rec = Recorder(problem.lb, problem.ub)

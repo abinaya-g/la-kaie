@@ -1,0 +1,127 @@
+# Exploratory BBOB extension of Path A (experiments/MPHBS_BBOB_ADDENDUM.md).
+# Triggered by pushing a tag pathA-bbob-run-* (so it runs from the tagged commit without being on main), or by hand.
+#   1. freeze-check  the addendum must be marked FROZEN in the tagged commit
+#   2. tests         full test suite in the pinned environment + coco-experiment
+#   3. campaign      one job per (dimension, arm): 24 functions x 30 runs
+#   4. analysis      merged raw results -> scripts/pathA_bbob_analysis.py
+name: Path A BBOB extension
+
+on:
+  push:
+    tags: ["pathA-bbob-run-*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pathA-bbob-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.11"
+  COCO_PIN: "coco-experiment==2.8.2"
+  OPENBLAS_NUM_THREADS: "1"
+  OMP_NUM_THREADS: "1"
+  MKL_NUM_THREADS: "1"
+
+jobs:
+  freeze-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Addendum must be frozen
+        run: |
+          grep -q '^Status: \*\*FROZEN' experiments/MPHBS_BBOB_ADDENDUM.md || {
+            echo "::error::experiments/MPHBS_BBOB_ADDENDUM.md is not marked FROZEN"; exit 1; }
+          echo "frozen; campaign commit ${GITHUB_SHA}"
+
+  tests:
+    needs: freeze-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: python -m pip install -r requirements.txt "${COCO_PIN}"
+      - name: Build the official CEC2022 library
+        run: python -c "from lakaie.benchmarks.cec2022 import build_library; build_library(force=True)"
+      - name: Full test suite (includes tests/pathA/test_bbob.py)
+        run: python -m pytest -q
+      - run: python scripts/capture_environment.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pathA_bbob-environment
+          path: results/ENVIRONMENT.json
+
+  campaign:
+    needs: tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        bench: [BBOB-D10, BBOB-D20]
+        method: [PA-SARSA, PA-RND-FAIR, PA-SKEL]
+    name: ${{ matrix.bench }} ${{ matrix.method }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: python -m pip install -r requirements.txt "${COCO_PIN}"
+      - name: Run ${{ matrix.method }} on ${{ matrix.bench }} (24 functions x 30 runs)
+        run: python scripts/run_experiment.py --benchmark ${{ matrix.bench }} --campaign pathA_bbob --methods ${{ matrix.method }} --runs 30
+      - name: Give snapshots and logs job-unique names
+        if: always()
+        run: |
+          for f in results/raw/pathA_bbob/${{ matrix.bench }}/config_snapshot_*.yaml logs/run_pathA_bbob_*.log; do
+            [ -e "$f" ] && mv "$f" "${f%.*}_${{ matrix.method }}.${f##*.}"
+          done
+          true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pathA_bbob-${{ matrix.bench }}-${{ matrix.method }}
+          path: |
+            results/raw/pathA_bbob/
+            logs/run_pathA_bbob_*.log
+          if-no-files-found: error
+          retention-days: 90
+
+  analysis:
+    needs: campaign
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+      - run: python -m pip install -r requirements.txt "${COCO_PIN}"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pathA_bbob-BBOB-*
+          merge-multiple: true
+          path: .
+      - name: Fixed analysis (addendum)
+        run: python scripts/pathA_bbob_analysis.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pathA_bbob-analysis
+          path: results/analysis/pathA_bbob/
+          retention-days: 90
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pathA_bbob-raw-all
+          path: |
+            results/raw/pathA_bbob/
+            logs/run_pathA_bbob_*.log
+          retention-days: 90
