@@ -29,6 +29,7 @@
 \algrenewcommand\algorithmicensure{\textbf{Output:}}
 
 \input{generated/results.tex}
+\input{generated/bbob.tex}
 
 \journal{Swarm and Evolutionary Computation}
 
@@ -59,7 +60,9 @@ the same budget performs at least as well as SARSA on both benchmarks (mean pair
 \res{H1-CEC2022-wbar}, 95\% CI \res{H1-CEC2022-ci}, and \res{H1-FIR-wbar}, \res{H1-FIR-ci}). What matters is the
 exchange step itself, which halves the median error on FIR, and how the population memory is handled: refreshing it, as
 the published mirror does, is strongly harmful on CEC2022 and, in a post hoc diagnostic, collapses population diversity. The restructured main loop
-of MPHBS is consistently but negligibly better than the original backbone. We formalise budget- and state-matched
+of MPHBS is consistently but negligibly better than the original backbone. An exploratory extension to the 24 BBOB functions
+replicates the absence of a learning effect and shows that the exchange step helps on separable but hurts on rotated,
+non-separable functions. We formalise budget- and state-matched
 ablation controls and give a protocol for constructing them.
 \end{abstract}
 
@@ -683,6 +686,44 @@ log-diversity. Post hoc, exploratory.}
 \label{fig:diversity}
 \end{figure*}
 
+\subsection{Exploratory extension: BBOB}
+\label{sec:bbob}
+To check whether H1 and H3 hold beyond the two benchmark sets of the original study, we ran SARSA, RND-FAIR and SKEL on
+the 24 noiseless functions of the COCO BBOB suite~\cite{hansen2021coco} at $D=10$ and $D=20$, with $10{,}000\,D$ FEs, the
+B-C1 configuration and 30 seed-paired runs per function, run $r$ using BBOB instance $((r-1)\bmod 15)+1$. The design and
+analysis were fixed in an addendum to the pre-registration and committed before the campaign (Section~\ref{sec:availability});
+the extension is exploratory. Errors below $10^{-8}$ were set to $10^{-8}$, so runs that solve a function tie. All
+\res{bbob-runs} runs completed with the expected FE totals (campaign commit \texttt{\res{bbob-commit}}).
+
+Table~\ref{tab:bbob} and Fig.~\ref{fig:bbob} summarise the results. \textbf{Learning (B1).} At $D=10$ SARSA and random
+assembly are practically equivalent ($\bar W=\res{bbob-B1-D10-wbar}$ \res{bbob-B1-D10-ci}; no significant function). At
+$D=20$ the verdict is mixed: SARSA is better on f3 (separable Rastrigin) and random assembly on f9 (rotated Rosenbrock),
+while the interval for $\bar W$ (\res{bbob-B1-D20-wbar} \res{bbob-B1-D20-ci}) again lies below 0.5. BBOB thus replicates
+H1 on a third, independent suite: the learned controller brings no benefit.
+
+\textbf{Mediator (B3).} The value of the mediator depends on the function class (Table~\ref{tab:bbob-groups}). It helps
+strongly on separable or nearly separable functions, for example f3 and f4 (Rastrigin, B\"uche--Rastrigin), f6 (attractive
+sector) and, at $D=20$, f8 (Rosenbrock) and f20 (Schwefel), and it hurts on rotated, ill-conditioned or non-separable
+functions such as f10 (rotated ellipsoid), f12 (bent cigar), f13 (sharp ridge), f15 (rotated Rastrigin) and f21, f22
+(Gallagher). Both verdicts are mixed (\res{bbob-B3-D10-siga}/\res{bbob-B3-D10-sigc} functions in favour of SARSA/SKEL at
+$D=10$, \res{bbob-B3-D20-siga}/\res{bbob-B3-D20-sigc} at $D=20$). This pattern matches the mediator's mechanism: it assembles
+candidates coordinate by coordinate from different agents, which preserves good building blocks when variables are
+independent and destroys them when they interact, a limitation the MPHBS authors themselves anticipate for strongly
+coupled variables~\cite{flores2026mphbs}. On the FIR problems, whose objective \eqref{eq:fir} couples coefficients only
+weakly through a quadratic stop-band term, the mediator was uniformly beneficial (H3).
+
+\input{generated/tab_bbob.tex}
+\input{generated/tab_bbob_groups.tex}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig_bbob.pdf}
+\caption{Exploratory BBOB extension: per-function paired win probability of SARSA against random assembly (top) and
+against the loop without mediator (bottom), at $D=10$ (left) and $D=20$ (right). Horizontal lines separate the five BBOB
+function groups. Markers as in Fig.~\ref{fig:instances}.}
+\label{fig:bbob}
+\end{figure*}
+
 %% =====================================================================
 \section{Discussion}
 \label{sec:discussion}
@@ -762,10 +803,11 @@ the learning. More generally, in learned hybrids the mechanism that a learned co
 exchange) can be valuable even when the learning is not, and the two should be evaluated separately.
 
 \subsection{Threats to validity}
-\paragraph{Scope} We study one hybrid, two benchmark sets at one dimension each, and the authors' final configurations.
-Those configurations were selected with SARSA on the same benchmarks, which favours SARSA and makes H1 conservative. No free
-lunch results~\cite{wolpert1997nfl} caution against generalising beyond the problems studied.
-\pending{exploratory BBOB extension~\cite{hansen2021coco} to test whether H1 generalises.}
+\paragraph{Scope} We study one hybrid and the authors' final configurations. The confirmatory analysis covers two benchmark
+sets at one dimension each; the exploratory BBOB extension (Section~\ref{sec:bbob}) adds 24 functions at two dimensions and
+replicates H1, but it uses only three arms and 30 runs per function. The configurations were selected with SARSA on
+CEC2022 and FIR, which favours SARSA and makes H1 conservative. No free lunch results~\cite{wolpert1997nfl} caution against
+generalising beyond the problems studied.
 
 \paragraph{Port and platform} Our results use a Python port; agreement with the authors' MATLAB runs is distributional
 because random streams differ. The port reproduces the authors' FE totals and run distributions, and RND-AUTH reproduces
@@ -783,7 +825,8 @@ The learned controller of MPHBS does not improve on random choices at an equal b
 evidence for it rests on a control that is handicapped by its evaluation budget and, under the CEC2022 configuration, by a
 memory update that collapses population diversity. MPHBS's performance comes from exchanging information between its
 populations, from the amount of exchange, and from its handling of the population memory; its restructured loop is
-consistently but negligibly better than the original backbone. More generally, ablations of learned components in
+consistently but negligibly better than the original backbone. On the BBOB suite the learned controller again brings no
+benefit, and the exchange step helps only on separable functions. More generally, ablations of learned components in
 metaheuristics should be budget- and state-matched, verified mechanically, fixed in advance and reported with effect
 magnitudes.
 
@@ -792,8 +835,9 @@ magnitudes.
 \label{sec:availability}
 Code, the frozen pre-registration (tag \texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analyses and the
 scripts that generate every number, table and figure in this paper are available at
-\url{https://github.com/abinaya-g/la-kaie} (campaign commit \texttt{\res{commit}}). \pending{archive a release on Zenodo and
-cite its DOI.}
+\url{https://github.com/abinaya-g/la-kaie} (campaign commit \texttt{\res{commit}}). The BBOB extension's addendum
+(\path{experiments/MPHBS_BBOB_ADDENDUM.md}, tag \texttt{pathA-bbob-run-1}), its \res{bbob-runs} raw runs and analysis are in
+the same repository (campaign commit \texttt{\res{bbob-commit}}). \pending{archive a release on Zenodo and cite its DOI.}
 
 \section*{CRediT authorship contribution statement}
 \textbf{Abinaya G:} Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Data curation,
