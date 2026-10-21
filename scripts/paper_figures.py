@@ -64,6 +64,24 @@ def _legend(fig, plt, arms, y=-0.005, marker=False):
                bbox_to_anchor=(0.5, y))
 
 
+def _yaxis(ax, values):
+    """Readable y axis: log scale with at most 4 major labels (no minor labels) when the values span at least one
+    decade, otherwise a linear axis with at most 4 ticks and a shared offset (e.g. near-constant F9 errors)."""
+    from matplotlib import ticker
+    v = np.asarray(values, float)
+    v = v[np.isfinite(v) & (v > 0)]
+    if v.size and v.max() / v.min() >= 10:
+        ax.set_yscale("log")
+        ax.yaxis.set_major_locator(ticker.LogLocator(base=10, numticks=4))
+        ax.yaxis.set_minor_formatter(ticker.NullFormatter())
+    else:
+        ax.yaxis.set_major_locator(ticker.MaxNLocator(nbins=3))
+        fmt = ticker.ScalarFormatter(useOffset=True, useMathText=True)
+        fmt.set_powerlimits((-2, 3))
+        ax.yaxis.set_major_formatter(fmt)
+        ax.yaxis.get_offset_text().set_fontsize(5.5)
+
+
 # ------------------------------------------------------------------ convergence
 def convergence(dom, arms, names, ncols, fname, runs=50):
     plt = _plt()
@@ -71,6 +89,7 @@ def convergence(dom, arms, names, ncols, fname, runs=50):
     nrows = math.ceil(len(insts) / ncols)
     fig, axes = plt.subplots(nrows, ncols, figsize=(7.0, 1.55 * nrows + 0.5))
     for inst, ax in zip(insts, axes.ravel()):
+        shown = []
         for arm in arms:
             curves = []
             for r in range(1, runs + 1):
@@ -79,9 +98,10 @@ def convergence(dom, arms, names, ncols, fname, runs=50):
                 x = z["checkpoints"] / z["checkpoints"][-1]
             C = np.vstack(curves)
             col, ls, _, _ = STYLE[arm]
-            med = np.median(C, axis=0)
-            ax.plot(x, np.maximum(med, 1e-12), color=col, ls=ls, lw=1.2)
-        ax.set_yscale("log")
+            med = np.maximum(np.median(C, axis=0), 1e-12)
+            shown.append(med)
+            ax.plot(x, med, color=col, ls=ls, lw=1.2)
+        _yaxis(ax, np.concatenate(shown))
         ax.set_title(f"{'F' if dom == 'CEC2022' else 'Case '}{inst}: {names[inst]}", fontsize=6.8,
                      loc="left", color=INK)
         ax.grid(axis="y", color="#e6e5e1", lw=0.5, which="major")
@@ -117,7 +137,7 @@ def final_dist(df, dom, arms, names, ncols, fname, runs=50):
         for patch, a in zip(bp["boxes"], arms):
             patch.set_facecolor(STYLE[a][0])
             patch.set_alpha(0.55)
-        ax.set_yscale("log")
+        _yaxis(ax, np.concatenate([np.maximum(v, 1e-12) for v in data]))
         ax.set_xticks(pos)
         ax.set_xticklabels([STYLE[a][3] for a in arms], rotation=45, ha="right", fontsize=5.5)
         ax.set_title(f"{'F' if dom == 'CEC2022' else 'Case '}{inst}: {names[inst]}", fontsize=6.8,
@@ -146,7 +166,7 @@ def f10(summary):
                             ("MPHB", "MPHB (authors)", "PA-MPHB")):
         e = T[T.Alias == alias].Error.to_numpy(float)
         rows.append((lab, int((e < 50).sum()), int(e.size), STYLE[arm][0], STYLE[arm][2]))
-    fig, ax = plt.subplots(figsize=(3.5, 2.4))
+    fig, ax = plt.subplots(figsize=(7.0, 2.1))
     for i, (lab, k, n, col, mk) in enumerate(rows[::-1]):
         lo, hi = wilson(k, n)
         filled = "authors" not in lab
@@ -158,7 +178,7 @@ def f10(summary):
     ax.set_xlim(0, 1)
     ax.set_xlabel("F10 escape rate (95% Wilson interval)")
     ax.grid(axis="x", color="#e6e5e1", lw=0.5)
-    fig.tight_layout(rect=(0, 0, 0.9, 1))
+    fig.tight_layout(rect=(0, 0, 0.95, 1))
     fig.savefig(FIG / "fig_f10.pdf")
     fig.savefig(FIG / "fig_f10.png", dpi=180)
     plt.close(fig)

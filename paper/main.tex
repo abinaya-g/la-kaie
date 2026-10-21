@@ -11,7 +11,7 @@
 \usepackage[noend]{algpseudocode}
 \usepackage{tikz}
 \usetikzlibrary{positioning,calc,arrows.meta}
-\usepackage[section]{placeins}
+\usepackage{placeins}
 \usepackage[hidelinks]{hyperref}
 
 \definecolor{lblue}{HTML}{2A78D6}
@@ -623,13 +623,13 @@ mirror's low escape rate is reproduced. The authors' 17/30 for SARSA is inconsis
 $p=\res{H5-binom-p}$); since our port reproduces their other published distributions, we regard their single F10 sample
 as unrepresentative but cannot rule out a platform-dependent effect.
 
-\begin{figure}[t]
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/fig_f10.pdf}
+\includegraphics[width=0.85\textwidth]{figures/fig_f10.pdf}
 \caption{Escape rate on CEC2022 F10 (final error below 50) with 95\% Wilson intervals; filled markers: this study,
 hollow markers: the authors' published runs.}
 \label{fig:f10}
-\end{figure}
+\end{figure*}
 
 \paragraph{Amount of exchange (H6)} Fewer episodes per iteration are clearly worse on FIR ($N_i=1$ vs the default $9$:
 $\bar W=\res{H6-RND-Ni1-vs-default-FIR-wbar}$ \res{H6-RND-Ni1-vs-default-FIR-ci}), while no tested $N_i$ shows a
@@ -787,6 +787,7 @@ consistently but negligibly better than the original backbone. More generally, a
 metaheuristics should be budget- and state-matched, verified mechanically, fixed in advance and reported with effect
 magnitudes.
 
+\FloatBarrier
 \section*{Data and code availability}
 \label{sec:availability}
 Code, the frozen pre-registration (tag \texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analyses and the
@@ -855,6 +856,7 @@ are included in the repository under \path{third_party/}. The campaign was run a
 \path{.github/workflows/pathA-campaign.yml}, which refuses to start while the pre-registration is not frozen, runs the
 full test suite first and refuses to compute verdicts if any run is missing or has an unexpected FE total.
 
+\FloatBarrier
 \bibliographystyle{elsarticle-num}
 \bibliography{refs}
 
