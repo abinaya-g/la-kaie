@@ -1,0 +1,44 @@
+{
+  "status": "exploratory, post hoc (not in the pre-registration)",
+  "definition": "see scripts/pathA_diversity_diagnostic.py docstring",
+  "pairs": {
+    "RND": {
+      "stale_more_diverse_sig": 12,
+      "stale_less_diverse_sig": 0,
+      "stale_higher_acceptance_sig": 12,
+      "stale_lower_acceptance_sig": 0,
+      "median_A_mpa_stale": 0.012581511315688531,
+      "median_A_mpa_fresh": 0.002704257767548907,
+      "median_D_mean_diff": 4.751196803911569,
+      "spearman_Dmean_vs_perf": {
+        "rho": -0.1789484699847385,
+        "p": 0.5778881413305827,
+        "n": 12
+      },
+      "by_quantile_stale_more_diverse_sig": {
+        "D_25": 12,
+        "D_50": 12,
+        "D_75": 12
+      }
+    },
+    "SARSA": {
+      "stale_more_diverse_sig": 12,
+      "stale_less_diverse_sig": 0,
+      "stale_higher_acceptance_sig": 12,
+      "stale_lower_acceptance_sig": 0,
+      "median_A_mpa_stale": 0.012360951285001916,
+      "median_A_mpa_fresh": 0.002728231683927886,
+      "median_D_mean_diff": 4.611323221524064,
+      "spearman_Dmean_vs_perf": {
+        "rho": -0.18947485057207603,
+        "p": 0.5553252966401302,
+        "n": 12
+      },
+      "by_quantile_stale_more_diverse_sig": {
+        "D_25": 12,
+        "D_50": 12,
+        "D_75": 12
+      }
+    }
+  }
+}

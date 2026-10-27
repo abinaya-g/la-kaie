@@ -8,9 +8,12 @@ master_seeds:
   pilot: 51000000
   sensitivity: 61000000   # tuning seeds are disjoint from main-experiment seeds
   pathA: 92000000         # MPHBS deconstruction (experiments/MPHBS_DECONSTRUCTION_PREREG.md); disjoint from all other masters
+  pathA_bbob: 93000000    # exploratory BBOB extension (experiments/MPHBS_BBOB_ADDENDUM.md)
 benchmark_offset:
   CEC2022: 0
   FIR: 100000
+  BBOB-D10: 300000
+  BBOB-D20: 400000
 rng: "numpy.random.Generator(PCG64(seed))"
 n_workers: 4              # parallelism never changes results: every run is seeded independently
 convergence_checkpoints: 200   # linearly spaced FE checkpoints for convergence curves
