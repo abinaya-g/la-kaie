@@ -1,0 +1,53 @@
+\documentclass[11pt]{letter}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{url}
+\signature{Abinaya G\\Department of Information Technology\\Saveetha Engineering College, Chennai, India\\\url{gabinaya@saveetha.ac.in}}
+\address{Abinaya G\\Department of Information Technology\\Saveetha Engineering College\\Chennai, India}
+\date{\today}
+
+\begin{document}
+\begin{letter}{The Editors-in-Chief\\Swarm and Evolutionary Computation}
+
+\opening{Dear Editors,}
+
+I submit the manuscript \emph{``Does the learning matter? A pre-registered deconstruction of SARSA-guided information
+exchange in the MPHBS hybrid metaheuristic''} for consideration as a research article in \emph{Swarm and Evolutionary
+Computation}.
+
+Learned controllers are increasingly built into population-based metaheuristics, and their benefit is usually
+demonstrated by an ablation against a random or fixed control. The manuscript shows that this evidence can be misleading
+when the control is not matched to the learned variant in evaluation cost per iteration and in state updates. It does so
+for a recent, fully documented case: MPHBS (Flores and Olivares, \emph{Knowledge-Based Systems} 352, 2026), a
+Honey Badger--Marine Predators hybrid whose information exchange is guided by a SARSA-style value table.
+
+The main contributions are:
+\begin{itemize}
+\item an analytical proof, checked against the authors' public code and per-run results, that the published ``matched''
+  random mirror runs 21\% (CEC2022) and 16\% (FIR) fewer iterations at the same budget and, in one configuration,
+  refreshes a population memory that MPHBS leaves unchanged;
+\item a pre-registered study with budget-identical controls (14,300 seed-paired runs on CEC2022 and eight FIR
+  filter-design problems), analysed with a script frozen before the campaign: a random mediator performs at least as well
+  as SARSA on both benchmarks, while the exchange step and the memory handling carry the performance;
+\item an exploratory extension to the 24 BBOB functions that replicates the absence of a learning effect;
+\item a definition of budget- and state-matched ablation controls and a protocol for constructing and verifying them.
+\end{itemize}
+
+I believe the work fits the journal's scope and its commitment to sound experimental methodology, to which the journal has
+contributed influential guidelines (Derrac et al., 2011; LaTorre et al., 2021). The study applies these principles to a
+learned control component and adds pre-registration and unit tests that prove the intended equivalences between variants.
+The findings are negative for the learned component but positive and practical for the field: they identify what
+actually drives the hybrid and give authors a checklist for ablating learned components.
+
+All code, configurations, the frozen pre-registration, raw run data and analysis scripts are publicly available at
+\url{https://github.com/abinaya-g/la-kaie}. The manuscript is original, has not been published previously, and is not under
+consideration for publication elsewhere. The author declares no competing interests, and the research received no specific
+funding.
+
+Thank you for considering this submission.
+
+\closing{Yours sincerely,}
+
+\end{letter}
+\end{document}
