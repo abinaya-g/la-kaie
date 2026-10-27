@@ -21,11 +21,10 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 2. Literature survey (Section 2) is written from verified bibliographic records and abstracts; still confirm with a
    full-text Scopus/Web of Science search that no prior work re-examines MPHBS or learned
    information-exchange mediators; add the closest studies.
-3. Diversity diagnostic for the memory-refresh explanation (Section 5.4, 6.1); exploratory, from stored traces.
-4. Exploratory BBOB extension (Section 6.3).
-5. Verify every `refs.bib` entry against the publisher's page (written from memory).
-6. Zenodo release: not planned before submission (only if a reviewer asks).
-7. Decide whether the MPHBS authors are contacted before submission (Acknowledgements).
+3. Verify the `refs.bib` entries written from memory (the first block; the survey block was checked online) and
+   Talbi (2021) issue/article number.
+4. Zenodo release: not planned before submission (only if a reviewer asks).
+5. Decide whether the MPHBS authors are contacted before submission (Acknowledgements).
 
 ## Notes for revision
 
