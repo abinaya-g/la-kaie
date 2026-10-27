@@ -54,21 +54,19 @@ hybrid metaheuristic}
 
 \begin{abstract}
 MPHBS couples the Honey Badger Algorithm and the Marine Predators Algorithm through a mediator that assembles hybrid
-solutions dimension by dimension under the control of a SARSA-style value table, and its original evaluation attributes
-part of its performance to this learning, mainly through a comparison with a ``matched'' random mirror. We show
-analytically and from the published code that this mirror is not matched per iteration: it spends $N$ additional
-evaluations in every iteration, so it runs 21\% (CEC2022) and 16\% (FIR) fewer iterations at the same budget, and under
-the CEC2022 configuration it also refreshes a population memory that MPHBS leaves unchanged after the mediator. We then
-report a pre-registered study with budget-identical controls on the CEC2022 suite ($D=20$) and eight FIR filter-design
-problems ($D=31$): \res{runs-total} seed-paired runs executed once and analysed with a frozen script. A random mediator at
-the same budget performs at least as well as SARSA on both benchmarks (mean paired win probability of SARSA
-\res{H1-CEC2022-wbar}, 95\% CI \res{H1-CEC2022-ci}, and \res{H1-FIR-wbar}, \res{H1-FIR-ci}). What matters is the
-exchange step itself, which halves the median error on FIR, and how the population memory is handled: refreshing it, as
-the published mirror does, is strongly harmful on CEC2022 and, in a post hoc diagnostic, collapses population diversity. The restructured main loop
-of MPHBS is consistently but negligibly better than the original backbone. An exploratory extension to the 24 BBOB functions
-replicates the absence of a learning effect and shows that the exchange step helps on separable but hurts on rotated,
-non-separable functions. We formalise budget- and state-matched
-ablation controls and give a protocol for constructing them.
+solutions dimension by dimension under the control of a SARSA-style value table; its authors attribute part of its
+performance to this learning, mainly through a comparison with a ``matched'' random mirror. We show analytically and from
+the published code that this mirror is not matched: it spends $N$ additional evaluations per iteration, so it runs 21\%
+(CEC2022) and 16\% (FIR) fewer iterations at the same budget, and under the CEC2022 configuration it also refreshes a
+population memory that MPHBS leaves unchanged. We then report a pre-registered study with budget-identical controls on
+CEC2022 ($D=20$) and eight FIR filter-design problems ($D=31$): \res{runs-total} seed-paired runs analysed with a frozen
+script. A random mediator at the same budget performs at least as well as SARSA on both benchmarks (mean paired win
+probability of SARSA \res{H1-CEC2022-wbar}, 95\% CI \res{H1-CEC2022-ci}, and \res{H1-FIR-wbar}, \res{H1-FIR-ci}). What
+matters is the exchange step itself, which halves the median error on FIR, and the handling of the population memory:
+refreshing it, as the published mirror does, is strongly harmful on CEC2022 and, in a post hoc diagnostic, collapses population diversity. The
+restructured main loop is consistently but negligibly better than the original backbone. An exploratory extension to the
+24 BBOB functions replicates the absence of a learning effect. We formalise budget- and state-matched ablation controls and
+give a protocol for constructing them.
 \end{abstract}
 
 \begin{keyword}
