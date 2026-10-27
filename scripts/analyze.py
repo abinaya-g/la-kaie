@@ -52,7 +52,7 @@ def result_table(desc, R, methods, item):
 
 def to_latex(df, path, caption, label, bold_min_rows=("Mean",)):
     cols = list(df.columns)
-    lines = [r"\begin{table*}[t]", r"\centering", r"\scriptsize", f"\\caption{{{caption}}}",
+    lines = [r"\begin{table*}[!t]", r"\centering", r"\scriptsize", f"\\caption{{{caption}}}",
              f"\\label{{{label}}}", r"\begin{tabular}{" + "l" * 2 + "r" * (len(cols) - 2) + "}", r"\hline",
              " & ".join(latex_escape(c) for c in cols) + r" \\", r"\hline"]
     for _, r in df.iterrows():

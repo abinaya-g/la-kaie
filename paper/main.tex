@@ -18,6 +18,16 @@
 \definecolor{lorange}{HTML}{EB6834}
 \newcommand{\pending}[1]{\textcolor{red}{[PENDING: #1]}}
 \setlength{\emergencystretch}{2em}
+% Float placement: allow up to two full-width floats per page so figures stay near their text
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+\renewcommand{\dbltopfraction}{0.9}
+\renewcommand{\dblfloatpagefraction}{0.8}
+\setcounter{topnumber}{3}
+\setcounter{dbltopnumber}{2}
+\setcounter{totalnumber}{5}
 \newtheorem{proposition}{Proposition}
 \newtheorem{corollary}{Corollary}
 \theoremstyle{definition}
@@ -186,7 +196,7 @@ macro placer against stronger baselines, including simulated annealing, on new p
 How closely random controls are matched to the learned variant, in evaluation budget per iteration and in state updates,
 is rarely reported, however; it is the question at the centre of this paper.
 
-\begin{table*}[t]
+\begin{table*}[!t]
 \centering
 \caption{Representative reinforcement-learning-controlled metaheuristics (from the cited papers' descriptions).}
 \label{tab:rl-survey}
@@ -553,18 +563,18 @@ and final-value distributions of the main arms, and Appendix~\ref{app:tables} re
 
 \input{generated/tab_primary.tex}
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/fig_forest.pdf}
+\includegraphics[width=0.78\textwidth]{figures/fig_forest.pdf}
 \caption{Mean paired win probability $\bar W$ of the first arm with 95\% bootstrap interval for every contrast
 (circles: confirmatory; squares: exploratory; blue/orange: interval above/below 0.5). The shaded band is the
 negligible-effect band used by the decision rule.}
 \label{fig:forest}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.92\textwidth]{figures/fig_instances.pdf}
+\includegraphics[width=0.68\textwidth]{figures/fig_instances.pdf}
 \caption{Per-instance paired win probability $\hat w$ of the first arm for the confirmatory hypotheses
 (F: CEC2022 function, C: FIR case). Filled markers are significant after Holm correction; the vertical line and band show
 $\bar W$ and its 95\% bootstrap interval; the dotted line marks no difference.}
@@ -582,9 +592,9 @@ higher), no instance favours SARSA, and the convergence curves of the two arms a
 
 \input{generated/tab_h1.tex}
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=0.95\textwidth]{figures/fig_convergence_cec.pdf}
+\includegraphics[width=0.85\textwidth]{figures/fig_convergence_cec.pdf}
 \caption{Median best-so-far error over 50 runs on CEC2022 as a function of the consumed FE budget (log scale).}
 \label{fig:conv-cec}
 \end{figure*}
@@ -622,7 +632,7 @@ about consistency, but the effect is of no practical relevance; the advantage of
 (H3), not from the loop.
 
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig_final_fir.pdf}
 \caption{Distributions of the final objective value on the FIR problems for the primary arms (runs 1--50, log scale).}
@@ -638,7 +648,7 @@ mirror's low escape rate is reproduced. The authors' 17/30 for SARSA is inconsis
 $p=\res{H5-binom-p}$); since our port reproduces their other published distributions, we regard their single F10 sample
 as unrepresentative but cannot rule out a platform-dependent effect.
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig_f10.pdf}
 \caption{Escape rate on CEC2022 F10 (final error below 50) with 95\% Wilson intervals; filled markers: this study,
@@ -650,7 +660,7 @@ hollow markers: the authors' published runs.}
 $\bar W=\res{H6-RND-Ni1-vs-default-FIR-wbar}$ \res{H6-RND-Ni1-vs-default-FIR-ci}), while no tested $N_i$ shows a
 consistent advantage of SARSA over random assembly (Fig.~\ref{fig:dose}, Table~\ref{tab:secondary}).
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.92\textwidth]{figures/fig_dose.pdf}
 \caption{Effect of the number of mediator episodes per subset member, $N_i$ (H6). Circles: SARSA vs RND-FAIR at the same
@@ -689,7 +699,7 @@ $\rho=\res{div-RND-rho}$, $p=\res{div-RND-rhop}$, $n=12$): F1 and F11 lose diver
 refresh. The mechanism is thus consistent with the direction of the effect on most functions but does not explain its
 size per function.
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.92\textwidth]{figures/fig_diversity.pdf}
 \caption{Median log$_{10}$ pooled diversity \eqref{eq:div} over 50 runs on CEC2022 for random assembly with MPHBS's stale
@@ -727,7 +737,7 @@ weakly through a quadratic stop-band term, the mediator was uniformly beneficial
 \input{generated/tab_bbob.tex}
 \input{generated/tab_bbob_groups.tex}
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.85\textwidth]{figures/fig_bbob.pdf}
 \caption{Exploratory BBOB extension: per-function paired win probability of SARSA against random assembly (top) and
@@ -877,14 +887,14 @@ Tables~\ref{tab:meanstd-cec2022} and~\ref{tab:meanstd-fir} give mean and standar
 Tables~\ref{tab:inst-h2a-cec2022}--\ref{tab:inst-h4-fir} give the per-instance statistics of the confirmatory contrasts
 H2a--H4 (H1 is in Table~\ref{tab:h1}).
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig_convergence_fir.pdf}
 \caption{Median best-so-far objective over 50 runs on the FIR problems as a function of the consumed FE budget.}
 \label{fig:conv-fir}
 \end{figure*}
 
-\begin{figure*}[t]
+\begin{figure*}[!t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig_final_cec.pdf}
 \caption{Distributions of the final error on CEC2022 for the primary arms (runs 1--50, log scale).}
