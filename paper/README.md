@@ -18,9 +18,9 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 ## Open items (shown in red as PENDING / VERIFY in the PDF)
 
 1. Co-authors (if any) and their CRediT roles; confirm the competing-interest statement.
-2. Literature survey (Section 2) is written from verified bibliographic records and abstracts; still confirm with a
-   full-text Scopus/Web of Science search that no prior work re-examines MPHBS or learned
-   information-exchange mediators; add the closest studies.
+2. Novelty search: Scopus done on 2026-10-27 (see `novelty_search_2026-10-27.md`); closest studies added to Section 2
+   and the "first HBA-MPA hybrid" claim corrected. Optional: Web of Science, and a Google Scholar cited-by check of
+   MPHBS right before submission.
 3. Verify the `refs.bib` entries written from memory (the first block; the survey block was checked online) and
    Talbi (2021) issue/article number.
 4. Zenodo release: not planned before submission (only if a reviewer asks).

@@ -142,8 +142,10 @@ movements in three phases of the run and adds two memory mechanisms, the marine 
 (FAD) perturbation. A review of 102 MPA studies covers its variants and hybrids and critically discusses its convergence
 behaviour and main limitations~\cite{albetar2023mpa}. Both algorithms are thus
 typical of the recent generation of population-based metaheuristics, and both are frequently hybridised. MPHBS combines
-the two through a learned exchange mechanism; to our knowledge it is the first HBA--MPA hybrid and the first to control
-their exchange with a temporal-difference learner.
+the two through a learned exchange mechanism. It is not the first HBA--MPA hybrid: Al-Dhaifallah et al.\ combined the
+two algorithms in series, population-division and switching schemes for a power-network planning
+problem~\cite{aldhaifallah2024mpahba}. To our knowledge, however, MPHBS is the first to control their exchange with a
+temporal-difference learner.
 
 \subsection{Hybrid and multi-population metaheuristics}
 Hybridising metaheuristics is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. Talbi's taxonomy
@@ -174,8 +176,15 @@ the balance between exploration and exploitation) and in the state used. MPHBS s
 are made per dimension of an assembled vector, and its value table is indexed by (dimension, rank, source), so its learned
 object is a recombination pattern rather than an operator or parameter. Across this literature, the usual evidence that
 learning helps is a comparison with the same algorithm without the learner, either with the controlled decision fixed or
-drawn at random. How closely such controls are matched to the learned variant, in evaluation budget per iteration and in
-state updates, is rarely reported; it is the question at the centre of this paper.
+drawn at random. Recent studies make this comparison central. Mohammed et al.\ ablate the Q-learning component of an
+ant colony optimiser and report faster convergence than the baseline without it~\cite{mohammed2026qlaco}; Carrasco et al.\
+compare a policy-gradient orchestrator of seven metaheuristics with round-robin, random and untrained controls and find
+that the policy mainly learns which members to avoid~\cite{carrasco2026orchestration}. Hanna et al.\ report that RL-based
+mutation-operator selection in automated program repair produces more test-passing variants but does not patch more bugs
+than uniform random selection~\cite{hanna2025apr}. Outside metaheuristics, Cheng et al.\ re-assessed a published deep-RL
+macro placer against stronger baselines, including simulated annealing, on new public benchmarks~\cite{cheng2026macro}.
+How closely random controls are matched to the learned variant, in evaluation budget per iteration and in state updates,
+is rarely reported, however; it is the question at the centre of this paper.
 
 \begin{table*}[t]
 \centering
@@ -223,9 +232,12 @@ by comparisons with a random or fixed control, but the conditions under which su
 learning, matching the evaluation cost per iteration and every state update, have not been made explicit. Second, MPHBS's
 claim that learning drives its performance has not been re-examined, although its code and per-run results are public.
 Third, the deconstruction literature has focused on metaphor-based algorithms; learned control components have received
-little such scrutiny. To our knowledge, no previous study re-examines MPHBS or its learned mediator, or analyses how
-per-iteration evaluation costs and state updates of random controls bias ablations of learned components.
-\pending{confirm with a full-text search (Scopus/Web of Science) before submission.}
+little such scrutiny; the closest studies compare learned and random controls~\cite{hanna2025apr,carrasco2026orchestration}
+but do not examine whether those controls are matched to the learned variant. We searched Scopus on 27~October~2026
+(titles, abstracts and keywords) for studies citing MPHBS (none), for HBA--MPA hybrids (13 records), and for
+RL-controlled metaheuristics combined with ablation, random-control or replication terms (136, 5 and 30 records). No
+record re-examines MPHBS or its learned mediator, or analyses how per-iteration evaluation costs and state updates of random
+controls bias ablations of learned components.
 
 %% =====================================================================
 \section{MPHBS and its published evidence}
