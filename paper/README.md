@@ -19,7 +19,7 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 
 1. Co-authors (if any) and their CRediT roles; confirm the competing-interest statement.
 2. Novelty search: Scopus done on 2026-10-27 (see `novelty_search_2026-10-27.md`); closest studies added to Section 2
-   and the "first HBA-MPA hybrid" claim corrected. Optional: Web of Science, and a Google Scholar cited-by check of
+   and the "first HBA-MPA hybrid" claim corrected. Web of Science skipped (author's decision). Optional: a Google Scholar cited-by check of
    MPHBS right before submission.
 3. References: journal entries checked against Scopus (2026-10-27); a few classics, the CEC2022 report and the arXiv
    preprint are standard and were not checked there.

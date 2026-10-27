@@ -12,4 +12,4 @@ Database: Scopus (institutional sign-in), field TITLE-ABS-KEY unless stated. Scr
 
 Result: no record re-examines MPHBS or analyses budget/state matching of random controls for learned components.
 
-Not done: Web of Science (no access checked); Google Scholar cited-by of MPHBS (recommended right before submission, since Scopus indexing lags).
+Not done: Web of Science (institutional access only in "Free View" on 2026-10-27; author decided Scopus suffices); Google Scholar cited-by of MPHBS (recommended right before submission, since Scopus indexing lags).
