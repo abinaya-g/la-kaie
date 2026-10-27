@@ -21,10 +21,10 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 2. Novelty search: Scopus done on 2026-10-27 (see `novelty_search_2026-10-27.md`); closest studies added to Section 2
    and the "first HBA-MPA hybrid" claim corrected. Optional: Web of Science, and a Google Scholar cited-by check of
    MPHBS right before submission.
-3. Verify the `refs.bib` entries written from memory (the first block; the survey block was checked online) and
-   Talbi (2021) issue/article number.
+3. References: journal entries checked against Scopus (2026-10-27); a few classics, the CEC2022 report and the arXiv
+   preprint are standard and were not checked there.
 4. Zenodo release: not planned before submission (only if a reviewer asks).
-5. Decide whether the MPHBS authors are contacted before submission (Acknowledgements).
+5. The MPHBS authors were not contacted (author's decision); Acknowledgements thank them for the public code only.
 
 ## Notes for revision
 
