@@ -17,7 +17,7 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 
 ## Open items (shown in red as PENDING / VERIFY in the PDF)
 
-1. Co-authors (if any) and their CRediT roles; confirm the competing-interest statement; review the AI-use declaration.
+1. Co-authors (if any) and their CRediT roles; confirm the competing-interest statement.
 2. Literature survey (Section 2) is written from verified bibliographic records and abstracts; still confirm with a
    full-text Scopus/Web of Science search that no prior work re-examines MPHBS or learned
    information-exchange mediators; add the closest studies.
