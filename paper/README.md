@@ -17,14 +17,14 @@ Every result in the text comes from `paper/generated/results.tex` through `\res{
 
 ## Open items (shown in red as PENDING / VERIFY in the PDF)
 
-1. Author e-mail, affiliation, co-authors, CRediT, competing interests, funding.
+1. Co-authors (if any) and their CRediT roles; confirm the competing-interest statement; review the AI-use declaration.
 2. Literature survey (Section 2) is written from verified bibliographic records and abstracts; still confirm with a
    full-text Scopus/Web of Science search that no prior work re-examines MPHBS or learned
    information-exchange mediators; add the closest studies.
 3. Diversity diagnostic for the memory-refresh explanation (Section 5.4, 6.1); exploratory, from stored traces.
 4. Exploratory BBOB extension (Section 6.3).
 5. Verify every `refs.bib` entry against the publisher's page (written from memory).
-6. Zenodo release of the repository and its DOI (Data availability).
+6. Zenodo release: not planned before submission (only if a reviewer asks).
 7. Decide whether the MPHBS authors are contacted before submission (Acknowledgements).
 
 ## Notes for revision
