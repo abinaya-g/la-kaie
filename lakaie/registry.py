@@ -7,6 +7,7 @@ from functools import lru_cache
 import numpy as np
 
 from .algorithms import hba, mpa, mphb, mphbs, mphbs_variants
+from .algorithms.baselines import BUDGETED
 from .core import calibrate_iterations
 
 # Iteration-driven baselines: T is calibrated from the FE budget exactly as in
@@ -17,7 +18,7 @@ ITERATIVE = {"HBA": hba.run, "MPA": mpa.run, "MPHB": mphb.run, "MPHBS": mphbs.ru
 
 
 def method_family(name: str) -> str:
-    if name in ITERATIVE:
+    if name in ITERATIVE or name in BUDGETED:
         return name
     if name.startswith("LA-KAIE"):
         return "LA-KAIE"
@@ -48,5 +49,7 @@ def run_method(name, cfg, obj, problem, N, rng, rec, max_fe):
         out["T"] = T
         out["estimated_fe"] = est
         return out
+    if name in BUDGETED:      # budget-driven external baselines (algorithms/baselines.py)
+        return BUDGETED[name](obj, lb, ub, dim, rng, copy.deepcopy(cfg), rec, max_fe)
     from .algorithms import lakaie
     return lakaie.run(obj, lb, ub, dim, N, rng, copy.deepcopy(cfg), rec, max_fe, problem=problem)

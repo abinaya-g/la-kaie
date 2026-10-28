@@ -72,3 +72,15 @@ def test_basis_orthonormal():
 def test_unknown_frame_rejected():
     with pytest.raises(ValueError):
         _run({**BC1, "frame": "polar"}, 0)
+
+
+def test_eigen_coordinates_rotation_invariant():
+    """T-EIG-ROT: rotating both populations by an orthogonal Q leaves their eigen-frame coordinates unchanged up
+    to a sign per axis; a coordinate-wise exchange in z therefore commutes with the rotation."""
+    rng = np.random.default_rng(3)
+    P = rng.normal(size=(60, 12)) @ np.diag(np.linspace(1, 5, 12))
+    Q, _ = np.linalg.qr(rng.normal(size=(12, 12)))
+    Z = P @ mphbs_variants.eigen_basis(P)
+    Zr = (P @ Q) @ mphbs_variants.eigen_basis(P @ Q)
+    s = np.sign(np.sum(Z * Zr, axis=0))
+    assert np.allclose(Z, Zr * s, atol=1e-8)

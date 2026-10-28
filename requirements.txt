@@ -6,3 +6,4 @@ PyYAML==6.0.1
 pytest==9.1.1
 pyflakes==4.0.0
 pypdfium2==5.13.0
+cma==4.0.0
