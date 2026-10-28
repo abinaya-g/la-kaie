@@ -19,6 +19,11 @@ Flags (all default to the MPHBS behaviour):
   (N extra FEs per iteration).
 * ``inject_gbest``: false = draw the two injection indices but do not write
   (test hook for T-INJ-INERT; never used by a campaign arm).
+* ``frame``: "axis" | "eigen". "eigen" runs the Phase-2 exchange in the eigenvector
+  frame of the covariance of both populations (computed once per iteration, zero
+  FEs): candidates are recombined coordinate-wise in that frame and mapped back
+  (and clipped) before evaluation. ``eigen_prob`` < 1 uses the eigen frame only in
+  that fraction of iterations (one extra rng draw per iteration).
 """
 from __future__ import annotations
 
@@ -26,7 +31,7 @@ import math
 
 import numpy as np
 
-from ..core import EPS, matlab_round
+from ..core import EPS, clip, matlab_round
 from .hybrid_common import HybridState
 from .mphbs import (ALPHA_LR, W_NOVEL, W_RANK, closest_action, elite_plus_random, eps_decay, greedy,
                     second_best)
@@ -43,7 +48,22 @@ def _flags(cfg):
         "sync_memory": bool(cfg.get("sync_memory", False)),
         "reeval_mpa_top": bool(cfg.get("reeval_mpa_top", False)),
         "inject_gbest": bool(cfg.get("inject_gbest", True)),
+        "frame": _frame(cfg),
+        "eigen_prob": float(cfg.get("eigen_prob", 1.0)),
     }
+
+
+def _frame(cfg):
+    frame = str(cfg.get("frame", "axis"))
+    if frame not in ("axis", "eigen"):
+        raise ValueError(f"unknown frame {frame!r}")
+    return frame
+
+
+def eigen_basis(P):
+    """Orthonormal eigenvector basis (columns) of the sample covariance of the rows of P."""
+    _, V = np.linalg.eigh(np.cov(P, rowvar=False))
+    return V
 
 
 def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
@@ -74,17 +94,21 @@ def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
         E = n_sub * Ni
         if not fl["skip_phase2"]:
             # ---------------- PHASE 2 (identical to mphbs.run unless a flag says otherwise)
+            B = None
+            if fl["frame"] == "eigen" and (fl["eigen_prob"] >= 1.0 or rng.random() < fl["eigen_prob"]):
+                B = eigen_basis(np.vstack([s.X_H, s.X_M]))
+            to_z = (lambda X: X) if B is None else (lambda X: X @ B)
             idxH = elite_plus_random(rng, s.F_H, n_sub)
             idxM = elite_plus_random(rng, s.F_M, n_sub)
             XHs, FHs = s.X_H[idxH].copy(), s.F_H[idxH].copy()
             XMs, FMs = s.X_M[idxM].copy(), s.F_M[idxM].copy()
-            result = np.stack([XHs, XMs], axis=2)            # (n_sub, D, 2)
+            result = np.stack([to_z(XHs), to_z(XMs)], axis=2)  # (n_sub, D, 2), in the exchange frame
 
-            values = s.Pbest.copy()
+            values = to_z(s.Pbest.copy())                     # current vector in the exchange frame
             ch = np.zeros(dim, dtype=int); rows = np.zeros(dim, dtype=int)
             for c in range(dim):
                 ch[c], rows[c] = closest_action(values[c], result, c)
-            f_curr = obj.eval1(values)
+            f_curr = obj.eval1(s.Pbest.copy() if B is not None else values)
             perm = rng.permutation(dim); ptr = 0
             for ep in range(1, E + 1):
                 end = ptr + block
@@ -102,6 +126,7 @@ def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
 
                 best_score, best_k = -np.inf, 0
                 cands = []
+                pbest_z = to_z(s.Pbest)
                 for k in range(1, K + 1):
                     v = values.copy(); chn = ch.copy(); rn = rows.copy()
                     for c in active:
@@ -119,13 +144,18 @@ def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
                         v[c] = result[rk, c, ck]; chn[c] = ck; rn[c] = rk
                     score = (-W_RANK * np.mean(rn[active] + 1)
                              + W_NOVEL * np.mean(np.abs(v[active] - values[active]))
-                             - w_best * np.linalg.norm(v[active] - s.Pbest[active]))
+                             - w_best * np.linalg.norm(v[active] - pbest_z[active]))
                     cands.append((v, chn, rn))
                     if score > best_score:
                         best_score, best_k = score, k - 1
                 v_next, ch_next, rows_next = cands[best_k]
+                if B is None:
+                    x_next = v_next
+                else:
+                    x_next = clip(v_next @ B.T, lb, ub)
+                    v_next = x_next @ B
 
-                val = obj.eval1(v_next)
+                val = obj.eval1(x_next)
                 reward = 1.0 if val < f_curr else (0.0 if val == f_curr else -1.0)
                 prog_local = (ep - 1) / max(1, E - 1)
                 if val < f_curr:
@@ -147,14 +177,14 @@ def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
                     n_acc += 1
                     values, f_curr, ch, rows = v_next, val, ch_next, rows_next
                     if f_curr < FHs.max():
-                        w = int(np.argmax(FHs)); XHs[w] = values; FHs[w] = f_curr
+                        w = int(np.argmax(FHs)); XHs[w] = x_next; FHs[w] = f_curr
                     if f_curr < FMs.max():
-                        w = int(np.argmax(FMs)); XMs[w] = values; FMs[w] = f_curr
-                    result = np.stack([XHs, XMs], axis=2)
+                        w = int(np.argmax(FMs)); XMs[w] = x_next; FMs[w] = f_curr
+                    result = np.stack([to_z(XHs), to_z(XMs)], axis=2)
 
                 if val < s.Pg:
                     n_improve_gbest += 1
-                    s.Pg, s.Pbest = val, v_next.copy()
+                    s.Pg, s.Pbest = val, x_next.copy()
                     th = idxH[int(rng.integers(0, idxH.size))]
                     tm = idxM[int(rng.integers(0, idxM.size))]
                     if fl["inject_gbest"]:
