@@ -1,6 +1,8 @@
 # Eigen-frame exchange: confirmatory campaign (design, fixed before any confirmatory run)
 
-Status: DRAFT, not yet frozen. Freeze = commit of this file before the first confirmatory run.
+Status: FROZEN 2026-10-29 (the commit that adds `scripts/eswa_campaign.sh`), before any confirmatory run.
+Launch: `bash scripts/eswa_campaign.sh`. Results: `results/eswa_eigen/<bench>/`; S4 runs go to
+`results/eswa_eigen_official/CEC2022-D20/`.
 
 ## 1. Background and what is already known
 
