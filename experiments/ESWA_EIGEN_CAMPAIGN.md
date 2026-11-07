@@ -121,3 +121,17 @@ paired runs.
 ## 8. Deviations
 
 Any change after freezing is logged here with date and reason.
+
+- 2026-11-03: the design did not say how the across-instance Wilcoxon treats instances with A = 0.5 exactly
+  (both arms tie on every run). The confirmatory test uses the scipy default (`zero_method="wilcox"`, zeros
+  dropped), chosen before looking at its result. Sensitivity with `pratt` and `zsplit` is reported alongside:
+  under those, H1 and H2 do not survive Holm (smallest p 0.028, 0.029; Holm-adjusted 0.056, 0.057).
+- 2026-11-03: the "median A exceeds 0.5" condition uses the exact median over the 28 instances.
+- 2026-11-03: the campaign was paused after the held-out benchmarks finished (CEC2022 D20 at 227/1800) to free
+  the machine; it resumes with `bash scripts/eswa_campaign.sh`.
+- 2026-11-04: the campaign finished (8 760/8 760 runs, all status ok, FE within budget).
+- 2026-11-07: S2, the f10/f2 ratio is degenerate because every arm reaches the 1e-8 floor on f2; the rotated
+  medians are reported alongside the ratio. S4 uses the official EA4eig entry files (30 runs per function, from
+  `2022-Full-Download.zip` in P-N-Suganthan/2022-SO-BO, kept in `data/external/cec2022_ea4eig/`), compared
+  unpaired (Vargha-Delaney A, Mann-Whitney U, Holm within each D). Secondary analyses
+  are in `scripts/eswa_eigen_secondary.py`.

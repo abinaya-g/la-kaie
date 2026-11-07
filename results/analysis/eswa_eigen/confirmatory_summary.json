@@ -1,0 +1,41 @@
+{
+  "git_commit": "36533c6491bb855ff8872e8ccda6241282c9de95",
+  "design": "experiments/ESWA_EIGEN_CAMPAIGN.md",
+  "n_instances": {},
+  "H1": {
+    "comparator": "RND",
+    "n": 28,
+    "median_A": 0.5002777777777778,
+    "mean_A": 0.5898214285714286,
+    "n_A_gt_half": 14,
+    "n_A_lt_half": 8,
+    "n_A_eq_half": 6,
+    "p_one_sided": 0.03093215657847293,
+    "inst_sig_EIG50": 5,
+    "inst_sig_comparator": 1,
+    "by_bench_median_A": {
+      "BBOB-D20": 0.56,
+      "CEC2022-D10": 0.5
+    },
+    "p_holm": 0.0430908517671669,
+    "supported": true
+  },
+  "H2": {
+    "comparator": "MPHBS",
+    "n": 28,
+    "median_A": 0.5144444444444445,
+    "mean_A": 0.5929563492063492,
+    "n_A_gt_half": 15,
+    "n_A_lt_half": 8,
+    "n_A_eq_half": 5,
+    "p_one_sided": 0.02154542588358345,
+    "inst_sig_EIG50": 6,
+    "inst_sig_comparator": 0,
+    "by_bench_median_A": {
+      "BBOB-D20": 0.5061111111111112,
+      "CEC2022-D10": 0.5216666666666667
+    },
+    "p_holm": 0.0430908517671669,
+    "supported": true
+  }
+}

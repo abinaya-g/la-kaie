@@ -1,0 +1,331 @@
+{
+  "git_commit": "36533c6491bb855ff8872e8ccda6241282c9de95",
+  "design": "experiments/ESWA_EIGEN_CAMPAIGN.md",
+  "status": "secondary",
+  "S1": {
+    "H1": {
+      "n": 56,
+      "median_A": 0.5197222222222222,
+      "n_gt": 31,
+      "n_lt": 18,
+      "n_eq": 7,
+      "p_wilcox": 0.0007661195669235995,
+      "p_pratt": 0.0014753486416692215,
+      "sig_for": 12,
+      "sig_against": 1,
+      "by_bench": {
+        "BBOB-D20": {
+          "median_A": 0.5191666666666667,
+          "sig_for": 7,
+          "sig_against": 1,
+          "n": 24
+        },
+        "CEC2022-D10": {
+          "median_A": 0.5,
+          "sig_for": 0,
+          "sig_against": 0,
+          "n": 12
+        },
+        "CEC2022-D20": {
+          "median_A": 0.558888888888889,
+          "sig_for": 3,
+          "sig_against": 0,
+          "n": 12
+        },
+        "FIR": {
+          "median_A": 0.6133333333333333,
+          "sig_for": 2,
+          "sig_against": 0,
+          "n": 8
+        }
+      }
+    },
+    "H2": {
+      "n": 56,
+      "median_A": 0.5288888888888889,
+      "n_gt": 33,
+      "n_lt": 17,
+      "n_eq": 6,
+      "p_wilcox": 0.0005237280208532796,
+      "p_pratt": 0.0007797327325996628,
+      "sig_for": 14,
+      "sig_against": 0,
+      "by_bench": {
+        "BBOB-D20": {
+          "median_A": 0.5038888888888888,
+          "sig_for": 7,
+          "sig_against": 0,
+          "n": 24
+        },
+        "CEC2022-D10": {
+          "median_A": 0.5216666666666667,
+          "sig_for": 0,
+          "sig_against": 0,
+          "n": 12
+        },
+        "CEC2022-D20": {
+          "median_A": 0.6105555555555555,
+          "sig_for": 2,
+          "sig_against": 0,
+          "n": 12
+        },
+        "FIR": {
+          "median_A": 0.7027777777777777,
+          "sig_for": 5,
+          "sig_against": 0,
+          "n": 8
+        }
+      }
+    }
+  },
+  "S2": {
+    "ellipsoid f10/f2": {
+      "MPHBS": {
+        "median_rotated": 121.0559538584942,
+        "median_separable": 1e-08,
+        "ratio": 12105595385.84942
+      },
+      "RND": {
+        "median_rotated": 89.8684300358921,
+        "median_separable": 1e-08,
+        "ratio": 8986843003.58921
+      },
+      "EIG50": {
+        "median_rotated": 8.469956840998123,
+        "median_separable": 1e-08,
+        "ratio": 846995684.0998123
+      },
+      "CMA-ES": {
+        "median_rotated": 1e-08,
+        "median_separable": 1e-08,
+        "ratio": 1.0
+      },
+      "L-SHADE": {
+        "median_rotated": 1e-08,
+        "median_separable": 1e-08,
+        "ratio": 1.0
+      }
+    },
+    "rastrigin f15/f3": {
+      "MPHBS": {
+        "median_rotated": 51.240189234782186,
+        "median_separable": 0.9949590571315294,
+        "ratio": 51.49979676802766
+      },
+      "RND": {
+        "median_rotated": 58.70241535926539,
+        "median_separable": 0.9949590575161622,
+        "ratio": 58.99983010940309
+      },
+      "EIG50": {
+        "median_rotated": 54.225053592600815,
+        "median_separable": 1.9899181141872235,
+        "ratio": 27.249891945804457
+      },
+      "CMA-ES": {
+        "median_rotated": 2.984877171281177,
+        "median_separable": 8.954631513840056,
+        "ratio": 0.33333333333346266
+      },
+      "L-SHADE": {
+        "median_rotated": 4.12686575651847,
+        "median_separable": 1e-08,
+        "ratio": 412686575.65184695
+      }
+    }
+  },
+  "S3": {
+    "CEC2022-D10": {
+      "mean_rank": {
+        "MPHBS": 3.25,
+        "RND": 2.792,
+        "EIG50": 2.542,
+        "CMA-ES": 3.625,
+        "L-SHADE": 2.792
+      },
+      "friedman_p": 0.2301952037553737,
+      "n": 12
+    },
+    "CEC2022-D20": {
+      "mean_rank": {
+        "MPHBS": 3.917,
+        "RND": 3.833,
+        "EIG50": 3.417,
+        "CMA-ES": 2.208,
+        "L-SHADE": 1.625
+      },
+      "friedman_p": 0.00033256312684549496,
+      "n": 12
+    },
+    "BBOB-D20": {
+      "mean_rank": {
+        "MPHBS": 3.542,
+        "RND": 3.708,
+        "EIG50": 3.333,
+        "CMA-ES": 2.271,
+        "L-SHADE": 2.146
+      },
+      "friedman_p": 6.222560075980275e-05,
+      "n": 24
+    },
+    "FIR": {
+      "mean_rank": {
+        "MPHBS": 4.375,
+        "RND": 4.25,
+        "EIG50": 3.375,
+        "CMA-ES": 1.0,
+        "L-SHADE": 2.0
+      },
+      "friedman_p": 1.5748634148013048e-05,
+      "n": 8
+    },
+    "all": {
+      "mean_rank": {
+        "MPHBS": 3.679,
+        "RND": 3.616,
+        "EIG50": 3.188,
+        "CMA-ES": 2.366,
+        "L-SHADE": 2.152
+      },
+      "n": 56
+    }
+  },
+  "S5": {
+    "CEC2022-D10": {
+      "MPHBS": {
+        "median_runtime_s": 81.05752479995135,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "RND": {
+        "median_runtime_s": 60.63649499998428,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "EIG50": {
+        "median_runtime_s": 61.32083494996186,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "CMA-ES": {
+        "median_runtime_s": 120.78223645000253,
+        "median_FE": 200000.0,
+        "max_FE": 200000,
+        "max_fes": 200000
+      },
+      "L-SHADE": {
+        "median_runtime_s": 19.423439599922858,
+        "median_FE": 200000.0,
+        "max_FE": 200000,
+        "max_fes": 200000
+      },
+      "EIG50_vs_RND_runtime_ratio_median": 1.0551671348971594,
+      "EIG50_vs_RND_FE_equal_share": 1.0
+    },
+    "CEC2022-D20": {
+      "MPHBS": {
+        "median_runtime_s": 75.93061199999647,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "RND": {
+        "median_runtime_s": 59.248522250010865,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "EIG50": {
+        "median_runtime_s": 60.93962645001011,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "CMA-ES": {
+        "median_runtime_s": 89.08992610000132,
+        "median_FE": 200000.0,
+        "max_FE": 200000,
+        "max_fes": 200000
+      },
+      "L-SHADE": {
+        "median_runtime_s": 11.620696149999276,
+        "median_FE": 200000.0,
+        "max_FE": 200000,
+        "max_fes": 200000
+      },
+      "EIG50_vs_RND_runtime_ratio_median": 1.032919784920492,
+      "EIG50_vs_RND_FE_equal_share": 1.0
+    },
+    "BBOB-D20": {
+      "MPHBS": {
+        "median_runtime_s": 158.30849424996995,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "RND": {
+        "median_runtime_s": 132.062780500004,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "EIG50": {
+        "median_runtime_s": 133.17003520000435,
+        "median_FE": 199930.0,
+        "max_FE": 199930,
+        "max_fes": 200000
+      },
+      "CMA-ES": {
+        "median_runtime_s": 183.2283926500022,
+        "median_FE": 200000.0,
+        "max_FE": 200000,
+        "max_fes": 200000
+      },
+      "L-SHADE": {
+        "median_runtime_s": 23.419512750006106,
+        "median_FE": 200000.0,
+        "max_FE": 200000,
+        "max_fes": 200000
+      },
+      "EIG50_vs_RND_runtime_ratio_median": 1.0319484169876112,
+      "EIG50_vs_RND_FE_equal_share": 1.0
+    },
+    "FIR": {
+      "MPHBS": {
+        "median_runtime_s": 86.91551799999434,
+        "median_FE": 149857.0,
+        "max_FE": 149857,
+        "max_fes": 150000
+      },
+      "RND": {
+        "median_runtime_s": 77.13470929999312,
+        "median_FE": 149857.0,
+        "max_FE": 149857,
+        "max_fes": 150000
+      },
+      "EIG50": {
+        "median_runtime_s": 79.78810814999451,
+        "median_FE": 149857.0,
+        "max_FE": 149857,
+        "max_fes": 150000
+      },
+      "CMA-ES": {
+        "median_runtime_s": 75.62800505000632,
+        "median_FE": 150000.0,
+        "max_FE": 150000,
+        "max_fes": 150000
+      },
+      "L-SHADE": {
+        "median_runtime_s": 24.858630250004353,
+        "median_FE": 150000.0,
+        "max_FE": 150000,
+        "max_fes": 150000
+      },
+      "EIG50_vs_RND_runtime_ratio_median": 1.0324765383782863,
+      "EIG50_vs_RND_FE_equal_share": 1.0
+    }
+  }
+}
