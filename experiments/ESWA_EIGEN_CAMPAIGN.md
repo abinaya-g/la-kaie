@@ -135,3 +135,18 @@ Any change after freezing is logged here with date and reason.
   `2022-Full-Download.zip` in P-N-Suganthan/2022-SO-BO, kept in `data/external/cec2022_ea4eig/`), compared
   unpaired (Vargha-Delaney A, Mann-Whitney U, Holm within each D). Secondary analyses
   are in `scripts/eswa_eigen_secondary.py`.
+
+## 9. Addendum (2026-11-07, after the main campaign and its analysis): common metaheuristic baselines
+
+Added after the confirmatory and secondary results were known, to report the comparisons that papers in this
+area usually show. Descriptive only: no hypothesis is added and H1/H2 are unchanged.
+
+- Arms: HBA and MPA (the parent algorithms, ports in `lakaie/algorithms/`), PSO (inertia 0.9 -> 0.4, c1 = c2 = 2,
+  |v| <= 0.2 range), DE/rand/1/bin (F = 0.5, CR = 0.9), GWO (Mirjalili et al. 2014), WOA (Mirjalili & Lewis
+  2016). N = 30 for all, as for the hybrids. Implementations in `lakaie/algorithms/baselines.py`.
+- GWO and WOA have a documented bias towards the origin; the unit tests show it on a shifted sphere. CEC2022 and
+  BBOB optima are shifted, so this is part of their real behaviour, not a bug.
+- Same benchmarks, budgets, 30 runs and seeds as Section 3 (runs are paired with the main arms).
+  Launch: `bash scripts/eswa_campaign_extra.sh`.
+- Reporting: the five main arms and these six together in the S3 tables and Friedman ranks. L-SHADE, CMA-ES and
+  EA4eig stay in every table as the state-of-the-art references.

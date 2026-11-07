@@ -125,4 +125,138 @@ def lshade_run(obj, lb, ub, dim, rng, cfg=None, rec: Recorder | None = None, max
     return {"best": obj.best, "best_x": obj.best_x}
 
 
-BUDGETED = {"CMA-ES": cmaes_run, "L-SHADE": lshade_run}
+def _generations(obj, lb, ub, dim, rng, cfg, rec, max_fe, init, step):
+    """Shared loop of the classic population baselines: ``step(X, fit, progress)`` returns the next trial
+    population, which is evaluated (truncated to the remaining budget) and passed to ``step`` again."""
+    N = int(cfg.get("N", 30))
+    X = rng.random((N, dim)) * (ub - lb) + lb
+    fit = obj(X)
+    state = init(X, fit)
+    while obj.fe < max_fe:
+        U = clip(step(state, obj.fe / max_fe), lb, ub)
+        left = max_fe - obj.fe
+        if left < len(U):                                     # final, truncated generation
+            obj(U[:left])
+            break
+        state.tell(U, obj(U))
+        if rec is not None:
+            rec.iteration(obj.fe, obj.best, [state.X], [state.fit])
+    return {"best": obj.best, "best_x": obj.best_x}
+
+
+class _Pop:
+    def __init__(self, X, fit):
+        self.X, self.fit = X.copy(), fit.copy()
+
+
+def pso_run(obj, lb, ub, dim, rng, cfg=None, rec: Recorder | None = None, max_fe: int = 0):
+    """Global-best PSO with linearly decreasing inertia 0.9 -> 0.4, c1 = c2 = 2, |v| <= 0.2 (ub - lb)."""
+    cfg = cfg or {}
+    c1, c2, vfrac = float(cfg.get("c1", 2.0)), float(cfg.get("c2", 2.0)), float(cfg.get("vmax", 0.2))
+    vmax = vfrac * (ub - lb)
+
+    class S(_Pop):
+        def tell(self, U, fu):
+            self.X = U
+            imp = fu < self.pf
+            self.P[imp], self.pf[imp] = U[imp], fu[imp]
+
+    def init(X, fit):
+        s = S(X, fit)
+        s.P, s.pf, s.V = X.copy(), fit.copy(), np.zeros_like(X)
+        return s
+
+    def step(s, prog):
+        w = 0.9 - 0.5 * prog
+        g = s.P[np.argmin(s.pf)]
+        r1, r2 = rng.random(s.X.shape), rng.random(s.X.shape)
+        s.V = np.clip(w * s.V + c1 * r1 * (s.P - s.X) + c2 * r2 * (g - s.X), -vmax, vmax)
+        return s.X + s.V
+
+    return _generations(obj, lb, ub, dim, rng, cfg, rec, max_fe, init, step)
+
+
+def de_run(obj, lb, ub, dim, rng, cfg=None, rec: Recorder | None = None, max_fe: int = 0):
+    """DE/rand/1/bin (Storn & Price 1997), F = 0.5, CR = 0.9, greedy one-to-one selection."""
+    cfg = cfg or {}
+    F, CR = float(cfg.get("F", 0.5)), float(cfg.get("CR", 0.9))
+
+    class S(_Pop):
+        def tell(self, U, fu):
+            imp = fu <= self.fit
+            self.X[imp], self.fit[imp] = U[imp], fu[imp]
+
+    def step(s, prog):
+        N, D = s.X.shape
+        idx = np.array([rng.choice(np.delete(np.arange(N), i), 3, replace=False) for i in range(N)])
+        V = s.X[idx[:, 0]] + F * (s.X[idx[:, 1]] - s.X[idx[:, 2]])
+        mask = rng.random((N, D)) <= CR
+        mask[np.arange(N), rng.integers(0, D, N)] = True
+        return np.where(mask, V, s.X)
+
+    return _generations(obj, lb, ub, dim, rng, cfg, rec, max_fe, S, step)
+
+
+def gwo_run(obj, lb, ub, dim, rng, cfg=None, rec: Recorder | None = None, max_fe: int = 0):
+    """Grey Wolf Optimizer (Mirjalili et al. 2014): a decreases linearly 2 -> 0; alpha, beta, delta are the
+    three best positions found so far."""
+    class S(_Pop):
+        def __init__(self, X, fit):
+            super().__init__(X, fit)
+            self.L, self.lf = X[:0], fit[:0]
+            self.tell(X, fit, replace=False)
+
+        def tell(self, U, fu, replace=True):
+            if replace:
+                self.X, self.fit = U, fu
+            P, pf = np.vstack([self.L, U]), np.concatenate([self.lf, fu])
+            o = np.argsort(pf, kind="stable")[:3]
+            self.L, self.lf = P[o].copy(), pf[o].copy()
+
+    def step(s, prog):
+        a = 2.0 * (1.0 - prog)
+        Xn = np.zeros_like(s.X)
+        for leader in s.L:
+            A = 2 * a * rng.random(s.X.shape) - a
+            C = 2 * rng.random(s.X.shape)
+            Xn += leader - A * np.abs(C * leader - s.X)
+        return Xn / len(s.L)
+
+    return _generations(obj, lb, ub, dim, rng, cfg or {}, rec, max_fe, S, step)
+
+
+def woa_run(obj, lb, ub, dim, rng, cfg=None, rec: Recorder | None = None, max_fe: int = 0):
+    """Whale Optimization Algorithm (Mirjalili & Lewis 2016): a 2 -> 0, b = 1, p = 0.5 per agent,
+    random-whale search when |A| >= 1."""
+    b = 1.0
+
+    class S(_Pop):
+        def __init__(self, X, fit):
+            super().__init__(X, fit)
+            k = int(np.argmin(fit))
+            self.g, self.gf = X[k].copy(), float(fit[k])
+
+        def tell(self, U, fu):
+            self.X, self.fit = U, fu
+            k = int(np.argmin(fu))
+            if fu[k] < self.gf:
+                self.g, self.gf = U[k].copy(), float(fu[k])
+
+    def step(s, prog):
+        N, D = s.X.shape
+        a, a2 = 2.0 * (1.0 - prog), -1.0 - prog
+        A = 2 * a * rng.random(N) - a
+        C = 2 * rng.random(N)
+        p = rng.random(N)
+        l = (a2 - 1) * rng.random(N) + 1
+        Xr = s.X[rng.integers(0, N, N)]
+        ref = np.where((np.abs(A) < 1)[:, None], s.g, Xr)
+        enc = ref - A[:, None] * np.abs(C[:, None] * ref - s.X)
+        spiral = np.abs(s.g - s.X) * np.exp(b * l)[:, None] * np.cos(2 * np.pi * l)[:, None] + s.g
+        return np.where((p < 0.5)[:, None], enc, spiral)
+
+    return _generations(obj, lb, ub, dim, rng, cfg or {}, rec, max_fe, S, step)
+
+
+BUDGETED = {"CMA-ES": cmaes_run, "L-SHADE": lshade_run, "PSO": pso_run, "DE": de_run, "GWO": gwo_run,
+            "WOA": woa_run}
