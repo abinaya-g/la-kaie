@@ -1,0 +1,21 @@
+% Standalone build of Fig. 1 (architecture) for separate artwork upload.
+% Build from paper_eswa/ after main.tex has been compiled (equation numbers come from main.aux):
+%   pdflatex -output-directory figures figures/fig_architecture.tex
+\documentclass[12pt,border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,arrows.meta,fit,backgrounds,shapes.geometric}
+\usepackage{xr}
+\externaldocument{main}
+\definecolor{cblue}{HTML}{2A78D6}
+\definecolor{cblueL}{HTML}{CDE2FB}
+\definecolor{corange}{HTML}{EB6834}
+\definecolor{corangeL}{HTML}{FBE0D4}
+\definecolor{cgreenL}{HTML}{D3F0E4}
+\definecolor{cgray}{HTML}{F0EFEC}
+\begin{document}
+\input{figures/fig_architecture_tikz.tex}
+\end{document}

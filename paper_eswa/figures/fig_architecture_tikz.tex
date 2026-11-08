@@ -1,0 +1,58 @@
+\begin{tikzpicture}[
+  font=\scriptsize,
+  node distance=0.42cm,
+  blk/.style={draw=black!45, fill=#1, rounded corners=3pt, align=center, minimum height=0.75cm,
+              text width=4.3cm, inner sep=3pt},
+  dec/.style={draw=black!60, fill=white, diamond, aspect=2.8, align=center, inner sep=0.5pt},
+  arr/.style={-{Stealth[length=2mm]}, semithick},
+  lbl/.style={font=\scriptsize\itshape, text=black!65}]
+% ---------------- left: one iteration
+\node[blk=cgray] (init) {Initialisation: $X^H, X^M \sim U(\Omega)$, $2N$ FEs};
+\node[blk=cblueL, text width=1.85cm, below=0.75cm of init.south west, anchor=north west] (hba) {HBA move\\digging / honey\\Eq.~\eqref{eq:hba}};
+\node[blk=corangeL, text width=1.85cm, below=0.75cm of init.south east, anchor=north east] (mpa) {MPA move\\Brownian / L\'evy\\Eqs.~\eqref{eq:mpa}, \eqref{eq:memory}};
+\node[draw=black!50, dashed, rounded corners, fit=(hba)(mpa), inner sep=4pt] (ph1) {};
+\node[lbl, anchor=south east] at (ph1.north east) {Phase 1: $2N$ FEs};
+\node[blk=corangeL, below=of ph1] (fad1) {FAD stage (CEC2022, BBOB): $N$ FEs};
+\node[blk=cgray, below=of fad1] (gb) {global best $p^\star$};
+\node[blk=cgreenL, below=of gb, minimum height=1.1cm] (p2) {\textbf{Phase 2: eigen-frame exchange}\\(detail on the right), $1+E$ FEs};
+\node[blk=corangeL, below=of p2] (fad2) {FAD stage (FIR): $N$ FEs};
+\node[dec, below=of fad2] (stop) {budget\\reached?};
+\node[blk=cgray, below=of stop] (out) {return $p^\star$};
+\draw[arr] (init) -- (ph1);
+\draw[arr] (ph1) -- (fad1);
+\draw[arr] (fad1) -- (gb);
+\draw[arr] (gb) -- (p2);
+\draw[arr] (p2) -- (fad2);
+\draw[arr] (fad2) -- (stop);
+\draw[arr] (stop) -- node[lbl, right] {yes} (out);
+\draw[arr] (stop.west) -- node[lbl, above] {no} ++(-1.1,0) |- (ph1.west);
+% ---------------- right: Phase 2 detail
+\node[blk=white, right=2.6cm of init] (gate) {draw $r\sim U(0,1)$};
+\node[blk=cblueL, text width=2.6cm, below=0.6cm of gate.south, anchor=north east, xshift=-0.15cm] (eig) {$r<q$: $B\gets$ eigenvectors\\of $\mathrm{cov}[X^H;X^M]$};
+\node[blk=cgray, text width=2.6cm, below=0.6cm of gate.south, anchor=north west, xshift=0.15cm] (axis) {$r\ge q$: $B\gets I$\\(axis frame)};
+\node[blk=white, below=0.6cm of gate |- eig.south] (sub) {ranked subsets $S^H, S^M$ (elite + random)};
+\node[blk=cblueL, below=of sub] (proj) {project: $R\gets(S^HB,\,S^MB)$,\\$z\gets p^\star B$};
+\node[blk=white, text width=5.8cm, below=of proj] (ep) {\textbf{episode} $e=1,\dots,E$: next block $A_e$;\\
+  $K$ candidates $z^{(k)}_d\gets R_{n_d,d,c_d}$ for $d\in A_e$,\\
+  source $c_d$ and rank $n_d$ uniform;\\
+  select one by the proxy score, Eq.~\eqref{eq:proxy}};
+\node[blk=cblueL, below=of ep] (back) {map back: $x'=\mathrm{clip}(z'B^\top)$};
+\node[blk=white, text width=5.8cm, below=of back] (acc) {evaluate $f(x')$ (1 FE); accept by Eq.~\eqref{eq:accept};\\
+  update subsets, $z\gets x'B$, $p^\star$};
+\node[blk=white, below=of acc] (wb) {write subsets back into $X^H, X^M$};
+\draw[arr] (gate) -- (eig);
+\draw[arr] (gate) -- (axis);
+\draw[arr] (eig) -- (sub);
+\draw[arr] (axis) -- (sub);
+\draw[arr] (sub) -- (proj);
+\draw[arr] (proj) -- (ep);
+\draw[arr] (ep) -- (back);
+\draw[arr] (back) -- (acc);
+\draw[arr] (acc.east) -- ++(0.45,0) |- node[lbl, right, pos=0.25, align=left] {next\\episode} (ep.east);
+\draw[arr] (acc) -- (wb);
+\begin{scope}[on background layer]
+\node[draw=cblue, fill=cgreenL!35, rounded corners, fit=(gate)(eig)(axis)(ep)(wb), inner xsep=14pt, inner ysep=6pt] (detail) {};
+\end{scope}
+\draw[dashed, cblue, thick] (p2.north east) -- (detail.north west);
+\draw[dashed, cblue, thick] (p2.south east) -- (detail.south west);
+\end{tikzpicture}

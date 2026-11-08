@@ -21,3 +21,9 @@ paper_eswa/*.blg
 paper_eswa/*.bbl
 paper_eswa/*.spl
 paper_eswa/build.log
+paper_eswa/submission/build_anon/
+paper_eswa/submission/*.aux
+paper_eswa/submission/*.log
+paper_eswa/submission/*.out
+paper_eswa/figures/*.aux
+paper_eswa/figures/*.log

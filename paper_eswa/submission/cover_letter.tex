@@ -1,0 +1,57 @@
+\documentclass[11pt]{letter}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{url}
+\signature{Abinaya G\\Department of Information Technology\\Saveetha Engineering College, Chennai, India\\\url{gabinaya@saveetha.ac.in}}
+\address{Abinaya G\\Department of Information Technology\\Saveetha Engineering College\\Chennai, India}
+\date{\today}
+
+\begin{document}
+\begin{letter}{The Editors-in-Chief\\Expert Systems with Applications}
+
+\opening{Dear Editors,}
+
+I submit the manuscript \emph{``EIG-MPHBS: a rotation-invariant information exchange for hybrid Honey Badger--Marine
+Predators optimisation''} for consideration as a research article in \emph{Expert Systems with Applications}.
+
+Hybrid metaheuristics are widely used as the optimisation engine of intelligent systems in engineering. Many of them let
+two populations cooperate by recombining their members coordinate by coordinate. The manuscript shows that this
+exchange depends on the coordinate system and fails on problems whose variables are coupled. It does so for MPHBS, a
+recent hybrid of the Honey Badger Algorithm and the Marine Predators Algorithm (Flores and Olivares,
+\emph{Knowledge-Based Systems} 352, 2026). It then fixes the weakness by carrying out the exchange in the eigenvector
+frame of the pooled populations.
+
+The manuscript does not propose a new metaphor-based algorithm. The method is stated in standard optimisation
+terminology (covariance estimation, eigenvector frame, coordinate-wise recombination). It is positioned against the
+eigenvector-based crossover and multitasking literature it builds on, and its properties are proved formally. The main
+contributions are:
+\begin{itemize}
+\item a proof that the eigen-frame exchange is invariant to rotations of the search space and costs no extra function
+  evaluations, with a measured run-time overhead of 3--6\%;
+\item a mechanism analysis showing that the eigen frame restores the acceptance of exchanged candidates on coupled
+  problems, where the axis-frame exchange stalls;
+\item an evaluation in 18\,840 seed-paired runs on CEC2022, the 24 BBOB functions and eight FIR filter-design problems
+  against ten algorithms: MPHBS, its parent algorithms, PSO, DE, GWO, WOA, L-SHADE and CMA-ES, plus the official
+  CEC2022 results of EA4eig;
+\item a design fixed before the experiments, with confirmatory tests on held-out instances, and public code, raw runs
+  and analysis scripts.
+\end{itemize}
+
+The results are reported in full, including their limits. EIG-MPHBS is never significantly worse than MPHBS on any of
+56 instances and clearly outperforms the classical metaheuristics, but L-SHADE, CMA-ES and EA4eig remain stronger. The
+FIR filter-design problems provide the engineering application.
+
+The manuscript cites one related manuscript by the author, which is under review elsewhere. It is cited anonymously as
+``Anonymous (2026)'' and identified on the title page; it studies the learned mediator of MPHBS and does not overlap
+with the method or experiments of this submission. I am glad to provide a copy if useful.
+
+The manuscript is original, has not been published previously, and is not under consideration for publication
+elsewhere. The author declares no competing interests, and the research received no specific funding.
+
+Thank you for considering this submission.
+
+\closing{Yours sincerely,}
+
+\end{letter}
+\end{document}
