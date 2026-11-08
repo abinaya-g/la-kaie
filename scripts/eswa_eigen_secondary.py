@@ -3,6 +3,7 @@
 S1: H1/H2 statistics on all 56 instances (piloted instances labelled).
 S2: rotation mechanism, ratio of median errors rotated/separable for BBOB f10/f2 and f15/f3, per arm.
 S3: Friedman ranks of the five arms per benchmark and overall (per-instance median errors), plus median tables.
+S3x: the same with the six common baselines of the Section 9 addendum (11 arms), plus EIG50-vs-each win/tie/loss.
 S4: EIG50 vs the official EA4eig CEC2022 runs (data/external/cec2022_ea4eig) at the official budgets, unpaired.
 S5: cost, runtime per run and FE used, EIG50 vs RND.
 
@@ -27,6 +28,8 @@ from lakaie.analysis.stats import holm, load_campaign  # noqa: E402
 
 BENCHES = {"CEC2022-D10": "CEC2022", "CEC2022-D20": "CEC2022", "BBOB-D20": "BBOB-D20", "FIR": "FIR"}
 ARMS = ["MPHBS", "RND", "EIG50", "CMA-ES", "L-SHADE"]
+EXTRA = ["HBA", "MPA", "PSO", "DE", "GWO", "WOA"]      # Section 9 addendum, descriptive only
+ALL_ARMS = ARMS + EXTRA
 PILOTED = {"CEC2022-D20": set(range(1, 13)), "FIR": set(range(1, 9)), "BBOB-D20": {1, 3, 8, 10, 12, 15, 16, 21}}
 ROT_PAIRS = {"ellipsoid f10/f2": (10, 2), "rastrigin f15/f3": (15, 3)}
 
@@ -83,19 +86,44 @@ def s2(d):
     return out
 
 
-def s3(D):
+def s3(D, arms=ARMS):
     med, ranks, out = [], [], {}
     for folder, d in D.items():
-        M = d.groupby(["instance", "method"]).err.median().unstack()[ARMS]
+        cnt = d[d.method.isin(arms)].groupby(["instance", "method"]).size().unstack()[arms]
+        assert (cnt == RUNS).all().all(), (folder, cnt[cnt != RUNS].stack())
+        M = d.groupby(["instance", "method"]).err.median().unstack()[arms]
         M.insert(0, "bench", folder)
         med.append(M.reset_index())
-        R = M[ARMS].rank(axis=1)
+        R = M[arms].rank(axis=1)
         ranks.append(R)
         out[folder] = {"mean_rank": R.mean().round(3).to_dict(),
-                       "friedman_p": float(friedmanchisquare(*[M[a] for a in ARMS]).pvalue), "n": int(len(M))}
+                       "friedman_p": float(friedmanchisquare(*[M[a] for a in arms]).pvalue), "n": int(len(M)),
+                       "eig50_better_median": {a: int((M["EIG50"] < M[a]).sum()) for a in arms if a != "EIG50"},
+                       "eig50_worse_median": {a: int((M["EIG50"] > M[a]).sum()) for a in arms if a != "EIG50"}}
     R = pd.concat(ranks)
-    out["all"] = {"mean_rank": R.mean().round(3).to_dict(), "n": int(len(R))}
+    out["all"] = {"mean_rank": R.mean().round(3).sort_values().to_dict(), "n": int(len(R))}
     return pd.concat(med, ignore_index=True), out
+
+
+def s3_pairwise(D, arms):
+    """EIG50 vs each other arm: per-instance paired Wilcoxon (Holm within benchmark x comparator), win/tie/loss."""
+    rows = []
+    for folder, d in D.items():
+        for c in arms:
+            if c == "EIG50":
+                continue
+            ps, recs = [], []
+            for f in sorted(d.instance.unique()):
+                x = d[(d.method == "EIG50") & (d.instance == f)].sort_values("run_id").err.to_numpy(float)
+                y = d[(d.method == c) & (d.instance == f)].sort_values("run_id").err.to_numpy(float)
+                recs.append((int(f), vd_a(x, y)))
+                ps.append(paired_p(x, y))
+            for (f, A), p, ph in zip(recs, ps, holm(np.array(ps))):
+                rows.append({"bench": folder, "comparator": c, "instance": f, "A": A, "p": p, "p_holm": ph,
+                             "result": ("+" if A > 0.5 else "-") if ph < 0.05 else "="})
+    T = pd.DataFrame(rows)
+    wtl = T.groupby(["comparator", "bench"]).result.value_counts().unstack(fill_value=0)
+    return T, wtl
 
 
 def ea4eig(D, f):
@@ -153,12 +181,18 @@ def main():
     T1.to_csv(out / "S1_all_instances.csv", index=False)
     M3, r3 = s3(D)
     M3.to_csv(out / "S3_median_errors.csv", index=False)
+    M3x, r3x = s3(D, ALL_ARMS)
+    M3x.to_csv(out / "S3x_median_errors_11arms.csv", index=False)
+    P3x, wtl = s3_pairwise(D, ALL_ARMS)
+    P3x.to_csv(out / "S3x_eig50_pairwise.csv", index=False)
+    wtl.to_csv(out / "S3x_eig50_win_tie_loss.csv")
     T4 = s4(D["CEC2022-D10"], off)
     T4.to_csv(out / "S4_eig50_official_budget.csv", index=False)
     summ = {"git_commit": git_hash(), "design": "experiments/ESWA_EIGEN_CAMPAIGN.md", "status": "secondary",
-            "S1": r1, "S2": s2(D["BBOB-D20"]), "S3": r3, "S5": s5(D)}
+            "S1": r1, "S2": s2(D["BBOB-D20"]), "S3": r3, "S3x_11arms": r3x, "S5": s5(D)}
     (out / "secondary_summary.json").write_text(json.dumps(summ, indent=2), encoding="utf-8")
-    print(json.dumps({k: summ[k] for k in ["S1", "S2", "S3", "S5"]}, indent=1))
+    print(json.dumps({k: summ[k] for k in ["S1", "S2", "S3", "S3x_11arms", "S5"]}, indent=1))
+    print(wtl.to_string())
     print(T4.to_string(index=False, float_format=lambda v: f"{v:.4g}"))
     return 0
 

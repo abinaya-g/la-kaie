@@ -1,5 +1,5 @@
 {
-  "git_commit": "36533c6491bb855ff8872e8ccda6241282c9de95",
+  "git_commit": "42612c9ca67605d58f649f3abff3aff6670bfdf7",
   "design": "experiments/ESWA_EIGEN_CAMPAIGN.md",
   "status": "secondary",
   "S1": {
@@ -144,7 +144,19 @@
         "L-SHADE": 2.792
       },
       "friedman_p": 0.2301952037553737,
-      "n": 12
+      "n": 12,
+      "eig50_better_median": {
+        "MPHBS": 6,
+        "RND": 5,
+        "CMA-ES": 6,
+        "L-SHADE": 4
+      },
+      "eig50_worse_median": {
+        "MPHBS": 2,
+        "RND": 2,
+        "CMA-ES": 2,
+        "L-SHADE": 4
+      }
     },
     "CEC2022-D20": {
       "mean_rank": {
@@ -155,7 +167,19 @@
         "L-SHADE": 1.625
       },
       "friedman_p": 0.00033256312684549496,
-      "n": 12
+      "n": 12,
+      "eig50_better_median": {
+        "MPHBS": 7,
+        "RND": 7,
+        "CMA-ES": 3,
+        "L-SHADE": 1
+      },
+      "eig50_worse_median": {
+        "MPHBS": 5,
+        "RND": 5,
+        "CMA-ES": 8,
+        "L-SHADE": 10
+      }
     },
     "BBOB-D20": {
       "mean_rank": {
@@ -166,7 +190,19 @@
         "L-SHADE": 2.146
       },
       "friedman_p": 6.222560075980275e-05,
-      "n": 24
+      "n": 24,
+      "eig50_better_median": {
+        "MPHBS": 11,
+        "RND": 14,
+        "CMA-ES": 5,
+        "L-SHADE": 3
+      },
+      "eig50_worse_median": {
+        "MPHBS": 10,
+        "RND": 7,
+        "CMA-ES": 15,
+        "L-SHADE": 17
+      }
     },
     "FIR": {
       "mean_rank": {
@@ -177,15 +213,209 @@
         "L-SHADE": 2.0
       },
       "friedman_p": 1.5748634148013048e-05,
-      "n": 8
+      "n": 8,
+      "eig50_better_median": {
+        "MPHBS": 6,
+        "RND": 7,
+        "CMA-ES": 0,
+        "L-SHADE": 0
+      },
+      "eig50_worse_median": {
+        "MPHBS": 2,
+        "RND": 1,
+        "CMA-ES": 8,
+        "L-SHADE": 8
+      }
     },
     "all": {
       "mean_rank": {
-        "MPHBS": 3.679,
-        "RND": 3.616,
-        "EIG50": 3.188,
+        "L-SHADE": 2.152,
         "CMA-ES": 2.366,
-        "L-SHADE": 2.152
+        "EIG50": 3.188,
+        "RND": 3.616,
+        "MPHBS": 3.679
+      },
+      "n": 56
+    }
+  },
+  "S3x_11arms": {
+    "CEC2022-D10": {
+      "mean_rank": {
+        "MPHBS": 4.5,
+        "RND": 3.792,
+        "EIG50": 3.542,
+        "CMA-ES": 4.917,
+        "L-SHADE": 3.667,
+        "HBA": 8.125,
+        "MPA": 3.583,
+        "PSO": 7.708,
+        "DE": 5.833,
+        "GWO": 9.5,
+        "WOA": 10.833
+      },
+      "friedman_p": 3.944578374032029e-14,
+      "n": 12,
+      "eig50_better_median": {
+        "MPHBS": 6,
+        "RND": 5,
+        "CMA-ES": 6,
+        "L-SHADE": 4,
+        "HBA": 10,
+        "MPA": 3,
+        "PSO": 9,
+        "DE": 8,
+        "GWO": 12,
+        "WOA": 12
+      },
+      "eig50_worse_median": {
+        "MPHBS": 2,
+        "RND": 2,
+        "CMA-ES": 2,
+        "L-SHADE": 4,
+        "HBA": 0,
+        "MPA": 4,
+        "PSO": 1,
+        "DE": 1,
+        "GWO": 0,
+        "WOA": 0
+      }
+    },
+    "CEC2022-D20": {
+      "mean_rank": {
+        "MPHBS": 4.833,
+        "RND": 4.917,
+        "EIG50": 4.167,
+        "CMA-ES": 2.375,
+        "L-SHADE": 1.708,
+        "HBA": 7.917,
+        "MPA": 5.667,
+        "PSO": 7.75,
+        "DE": 6.333,
+        "GWO": 9.333,
+        "WOA": 11.0
+      },
+      "friedman_p": 1.2868369255780334e-14,
+      "n": 12,
+      "eig50_better_median": {
+        "MPHBS": 7,
+        "RND": 7,
+        "CMA-ES": 3,
+        "L-SHADE": 1,
+        "HBA": 12,
+        "MPA": 8,
+        "PSO": 10,
+        "DE": 9,
+        "GWO": 12,
+        "WOA": 12
+      },
+      "eig50_worse_median": {
+        "MPHBS": 5,
+        "RND": 5,
+        "CMA-ES": 8,
+        "L-SHADE": 10,
+        "HBA": 0,
+        "MPA": 4,
+        "PSO": 2,
+        "DE": 3,
+        "GWO": 0,
+        "WOA": 0
+      }
+    },
+    "BBOB-D20": {
+      "mean_rank": {
+        "MPHBS": 4.708,
+        "RND": 5.0,
+        "EIG50": 4.375,
+        "CMA-ES": 2.958,
+        "L-SHADE": 2.708,
+        "HBA": 7.542,
+        "MPA": 4.729,
+        "PSO": 8.167,
+        "DE": 6.188,
+        "GWO": 9.042,
+        "WOA": 10.583
+      },
+      "friedman_p": 2.8155588600104696e-26,
+      "n": 24,
+      "eig50_better_median": {
+        "MPHBS": 11,
+        "RND": 14,
+        "CMA-ES": 5,
+        "L-SHADE": 3,
+        "HBA": 20,
+        "MPA": 14,
+        "PSO": 22,
+        "DE": 14,
+        "GWO": 22,
+        "WOA": 24
+      },
+      "eig50_worse_median": {
+        "MPHBS": 10,
+        "RND": 7,
+        "CMA-ES": 15,
+        "L-SHADE": 17,
+        "HBA": 2,
+        "MPA": 8,
+        "PSO": 2,
+        "DE": 8,
+        "GWO": 2,
+        "WOA": 0
+      }
+    },
+    "FIR": {
+      "mean_rank": {
+        "MPHBS": 4.375,
+        "RND": 4.25,
+        "EIG50": 3.375,
+        "CMA-ES": 1.0,
+        "L-SHADE": 2.0,
+        "HBA": 7.0,
+        "MPA": 6.125,
+        "PSO": 9.875,
+        "DE": 7.875,
+        "GWO": 9.5,
+        "WOA": 10.625
+      },
+      "friedman_p": 1.4416128063385994e-12,
+      "n": 8,
+      "eig50_better_median": {
+        "MPHBS": 6,
+        "RND": 7,
+        "CMA-ES": 0,
+        "L-SHADE": 0,
+        "HBA": 8,
+        "MPA": 8,
+        "PSO": 8,
+        "DE": 8,
+        "GWO": 8,
+        "WOA": 8
+      },
+      "eig50_worse_median": {
+        "MPHBS": 2,
+        "RND": 1,
+        "CMA-ES": 8,
+        "L-SHADE": 8,
+        "HBA": 0,
+        "MPA": 0,
+        "PSO": 0,
+        "DE": 0,
+        "GWO": 0,
+        "WOA": 0
+      }
+    },
+    "all": {
+      "mean_rank": {
+        "L-SHADE": 2.598,
+        "CMA-ES": 2.973,
+        "EIG50": 4.009,
+        "RND": 4.616,
+        "MPHBS": 4.643,
+        "MPA": 4.884,
+        "DE": 6.384,
+        "HBA": 7.67,
+        "PSO": 8.223,
+        "GWO": 9.268,
+        "WOA": 10.732
       },
       "n": 56
     }
