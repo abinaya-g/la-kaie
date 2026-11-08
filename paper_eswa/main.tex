@@ -9,7 +9,7 @@
 \usepackage{algorithm}
 \usepackage[noend]{algpseudocode}
 \usepackage{tikz}
-\usetikzlibrary{positioning,calc,arrows.meta,fit}
+\usetikzlibrary{positioning,calc,arrows.meta,fit,backgrounds,shapes.geometric}
 \usepackage{placeins}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
@@ -23,6 +23,12 @@
 \algrenewcommand\algorithmicrequire{\textbf{Input:}}
 \algrenewcommand\algorithmicensure{\textbf{Output:}}
 \newcommand{\pending}[1]{\textcolor{red}{[PENDING: #1]}}
+\definecolor{cblue}{HTML}{2A78D6}
+\definecolor{cblueL}{HTML}{CDE2FB}
+\definecolor{corange}{HTML}{EB6834}
+\definecolor{corangeL}{HTML}{FBE0D4}
+\definecolor{cgreenL}{HTML}{D3F0E4}
+\definecolor{cgray}{HTML}{F0EFEC}
 
 \input{generated/results.tex}
 
@@ -68,216 +74,426 @@ Marine Predators Algorithm \sep FIR filter design
 \section{Introduction}
 \label{sec:intro}
 
-Population-based metaheuristics are a standard tool for expert and intelligent systems that must optimise black-box
-objectives, from controller and filter design to scheduling and model tuning. A popular way to improve them is
-hybridisation: two algorithms with complementary search behaviour run together and exchange
-information~\citep{talbi2002taxonomy,blum2011hybrid,ma2019multipop}. MPHBS~\citep{flores2026mphbs} is a recent example. It runs
-a Honey Badger Algorithm (HBA) population~\citep{hashim2022hba} and a Marine Predators Algorithm (MPA)
-population~\citep{faramarzi2020mpa} in parallel, and in every iteration a mediator assembles new candidate solutions
-dimension by dimension from the best members of both populations. MPHBS was proposed with a SARSA-style learner that
-chooses which population and which rank supplies each coordinate. A companion study~\citep{g2026deconstruction}
-showed that a random choice at the same evaluation budget performs as well as the learner, and that the gains of MPHBS
-come from the exchange step itself.
+Many decision problems handled by expert and intelligent systems end in a continuous optimisation problem whose
+objective is available only as a black box: the parameters of a controller evaluated by simulation, the coefficients of
+a digital filter evaluated through its frequency response, the hyper-parameters of a model evaluated by
+cross-validation, or the settings of an energy system evaluated by a load-flow solver. Gradient information is
+unavailable or unreliable in these settings, the objective is often multimodal, and each evaluation can be expensive.
+Population-based metaheuristics are a common choice for such problems because they need only objective values, are
+easy to embed in an application pipeline, and can be run in parallel.
 
-This exchange has a structural weakness that it shares with many recombination operators: it acts on the coordinates of
-the search space. Copying coordinate $d$ from one solution into another is meaningful when the variables are separable,
-but when the objective couples variables through a rotation, coordinate-wise recombination destroys the correlated
-structure that the populations have learned~\citep{salomon1996rotation}. In MPHBS this shows up clearly on rotated
-problems: on the BBOB rotated ellipsoid (f10), MPHBS ends with a median error of \res{f10-MPHBS}, while on its separable
-counterpart (f2) it reaches the $10^{-8}$ accuracy floor (Section~\ref{sec:rotation}).
+No single metaheuristic performs best on all problems~\citep{wolpert1997nfl}, and this has made hybridisation one of the
+most popular design strategies in the field~\citep{talbi2002taxonomy,blum2011hybrid}. A hybrid combines algorithms with
+complementary search behaviour, typically an explorative one and an exploitative one, and lets them share information.
+Multi-population hybrids run the algorithms on separate populations and exchange information between them at regular
+intervals~\citep{alba2002parallel,ma2019multipop}. How this exchange is designed largely determines whether the hybrid
+is better than its components: an exchange that moves too much information makes the populations collapse onto each
+other, and one that moves too little leaves them independent.
 
-Eigenvector-based recombination is a known remedy. \citet{guo2015eigen} recombine differential evolution (DE) vectors in
-the eigenvector frame of the population covariance, CoBiDE~\citep{wang2014cobide} does the same with covariance matrix
-learning, EA4eig~\citep{bujok2022ea4eig} applies eigen crossover inside a cooperative model of four algorithms, and in
-evolutionary multitasking \citet{tang2021regularized,tang2022adaptive} transfer knowledge between populations in
-aligned eigen-subspaces. We do not propose a new operator. Our contribution is to identify the coordinate dependence of
-the HBA--MPA mediator as a cause of its weakness on rotated problems, to give the hybrid a rotation-invariant exchange
-that costs no extra evaluations, and to test the result rigorously against a broad set of algorithms. Specifically:
+MPHBS~\citep{flores2026mphbs} is a recent multi-population hybrid of the Honey Badger Algorithm
+(HBA)~\citep{hashim2022hba} and the Marine Predators Algorithm (MPA)~\citep{faramarzi2020mpa}, two widely used
+metaheuristics. In every iteration, after both algorithms have moved their own population, a mediator assembles new
+candidate solutions dimension by dimension from the best members of both populations: coordinate $d$ of a candidate is
+copied from a chosen member of the HBA or the MPA population. MPHBS was proposed with a SARSA-style reinforcement
+learner that decides which population and which rank supply each coordinate. A companion
+study~\citep{g2026deconstruction} showed that this learner brings no benefit over a uniform random choice at the same
+evaluation budget, and that the performance of MPHBS comes from the exchange step itself rather than from learning.
 
+This paper starts from that observation and asks a different question: what limits the exchange? Our answer is that
+it depends on the coordinate system. Copying coordinate $d$ from one good solution and coordinate $d'$ from another is
+a sound way to combine partial solutions when the variables are separable. When the objective couples variables, for
+instance through a rotation of the search space, the meaningful directions are not the coordinate axes, and a candidate
+assembled from the coordinates of different solutions lies far from all of them along those directions. This weakness
+of coordinate-wise recombination is well known for genetic algorithms~\citep{salomon1996rotation} and differential
+evolution~\citep{guo2015eigen}, and it is visible in MPHBS: on the BBOB rotated ellipsoid (f10), MPHBS ends with a
+median error of \res{f10-MPHBS}, while on the separable ellipsoid (f2) it reaches the $10^{-8}$ accuracy floor
+(Section~\ref{sec:rotation}).
+
+The remedy we adopt is known in other algorithm families. Eigenvector-based crossover in differential evolution
+recombines vectors in the eigenvector frame of the population covariance~\citep{guo2015eigen,wang2014cobide}, EA4eig
+uses eigen crossover inside a cooperative model of four algorithms~\citep{bujok2022ea4eig}, and in evolutionary
+multitasking knowledge is transferred between populations in aligned eigen-subspaces~\citep{tang2021regularized,
+tang2022adaptive}. We transfer this principle to the dimension-wise exchange of HBA--MPA hybrids and propose EIG-MPHBS,
+in which the exchange is carried out in the eigenvector frame of the pooled covariance of both populations in half of
+the iterations and along the original axes in the other half. We do not claim a new operator. The contribution lies in
+identifying the coordinate dependence of the exchange as a cause of the hybrid's weakness, fixing it at no extra
+evaluation cost, explaining why the fix works, and testing the result rigorously against a broad set of algorithms.
+
+The study is organised around four research questions:
+\begin{description}
+\item[RQ1] Does the eigen-frame exchange improve MPHBS on instances that were not used to design it?
+\item[RQ2] Does it remove the dependence of the exchange on rotations of the search space, and by what mechanism?
+\item[RQ3] How does EIG-MPHBS compare with the parent algorithms, with widely used metaheuristics and with
+state-of-the-art optimisers?
+\item[RQ4] What does the change cost, and how sensitive is it to its single parameter?
+\end{description}
+
+The main contributions are:
 \begin{enumerate}
-\item We propose EIG-MPHBS, which carries out the MPHBS exchange in the eigenvector frame of the pooled covariance of
-both populations in half of the iterations and along the original axes in the other half
-(Section~\ref{sec:method}).
-\item We prove that the eigen-frame exchange is invariant to rotations of the search space and that it uses exactly the
-same number of function evaluations as the axis-frame exchange, at an extra arithmetic cost of
-$O(ND^2+D^3)$ per iteration (Section~\ref{sec:theory}).
-\item We evaluate EIG-MPHBS on 56 instances from CEC2022, BBOB and an FIR filter-design application against ten
-algorithms: MPHBS and its random-mediator variant, the parent algorithms HBA and MPA, four widely used metaheuristics
-(PSO, DE, GWO, WOA), and two state-of-the-art references, L-SHADE and CMA-ES. We also compare with the official CEC2022
-results of EA4eig (Section~\ref{sec:results}).
-\item The main hypotheses, the held-out instances and the statistical tests were fixed in a design document before any
-confirmatory run. Code, raw results and the scripts that produce every number in this paper are public.
+\item EIG-MPHBS, a hybrid HBA--MPA optimiser whose inter-population exchange operates in the eigenvector frame of the
+pooled populations with probability $q=0.5$ (Section~\ref{sec:method}, Fig.~\ref{fig:architecture}).
+\item Two properties: the eigen-frame exchange is invariant to rotations of the search space, and it uses exactly the
+same number of function evaluations as the axis-frame exchange, at an extra arithmetic cost of $O(ND^2+D^3)$ per
+iteration (Section~\ref{sec:theory}).
+\item An evaluation on 56 instances from CEC2022, BBOB and an FIR filter-design application against ten algorithms:
+MPHBS and its random-mediator variant, the parent algorithms HBA and MPA, four widely used metaheuristics (PSO, DE, GWO,
+WOA), and two state-of-the-art references, L-SHADE and CMA-ES, plus a comparison with the official CEC2022 results of
+EA4eig (Section~\ref{sec:results}).
+\item A mechanism analysis showing that the eigen frame raises the acceptance rate of exchanged candidates on coupled
+problems, an ablation and sensitivity study, and an analysis of the designed filters (Sections~\ref{sec:mechanism}
+to~\ref{sec:fir}).
+\item A transparent protocol: the main hypotheses, the held-out instances and the statistical tests were fixed in a
+design document before any confirmatory run, and code, raw results and the scripts that produce every number in this
+paper are public.
 \end{enumerate}
 
-The results are positive but bounded, and we report both sides. EIG-MPHBS improves on MPHBS, is never significantly
-worse than it on any of the 56 instances, and clearly outperforms the common metaheuristics, including both of its
-parent algorithms. L-SHADE, CMA-ES and EA4eig remain stronger on most instances, and the confirmatory advantage on the
-held-out instances, while significant under the test we fixed in advance, is small.
+The results are positive but bounded. EIG-MPHBS improves on MPHBS, is never significantly worse than it on any of the
+56 instances, and clearly outperforms the common metaheuristics, including both of its parent algorithms. L-SHADE,
+CMA-ES and EA4eig remain stronger on most instances, and the confirmatory advantage on the held-out instances, while
+significant under the test we fixed in advance, is small. We report both sides.
 
-The paper is organised as follows. Section~\ref{sec:related} reviews related work, Section~\ref{sec:mphbs} describes
-MPHBS, Section~\ref{sec:method} presents EIG-MPHBS and Section~\ref{sec:theory} its properties.
-Section~\ref{sec:setup} describes the experimental setup, Section~\ref{sec:results} the results and
-Section~\ref{sec:discussion} discusses them. Section~\ref{sec:conclusion} concludes.
+The rest of the paper is organised as follows. Section~\ref{sec:related} reviews related work, Section~\ref{sec:mphbs}
+describes MPHBS in detail, Section~\ref{sec:method} presents EIG-MPHBS and Section~\ref{sec:theory} its properties.
+Section~\ref{sec:setup} describes the experimental setup and Section~\ref{sec:results} the results.
+Section~\ref{sec:discussion} discusses them and Section~\ref{sec:conclusion} concludes.
 
 %% =====================================================================
 \section{Related work}
 \label{sec:related}
 
 \subsection{HBA, MPA and their hybrids}
-HBA~\citep{hashim2022hba} alternates a digging move, scaled by a smell intensity, with a move towards the best agent,
-both modulated by a decreasing density factor. MPA~\citep{faramarzi2020mpa} switches between Brownian and L\'evy
-movements in three phases and adds a marine memory and a fish-aggregating-device (FAD) perturbation. Both have many
-variants, hybrids and applications~\citep{hassan2024hba,albetar2023mpa}. HBA and MPA have been combined in series,
-population-division and switching schemes for power-network planning~\citep{aldhaifallah2024mpahba}; MPHBS couples them
-through a learned dimension-wise exchange~\citep{flores2026mphbs}, which \citet{g2026deconstruction} showed to be no
-better than a budget-matched random choice.
+HBA~\citep{hashim2022hba} models the foraging of the honey badger. Each agent either ``digs'', moving around the best
+agent with a step scaled by a smell intensity that grows with the distance to the prey, or follows a honeyguide towards
+the best agent; a density factor that decreases over the run controls the step sizes. A recent survey counts 52 studies
+proposing improved HBA variants, for example with chaotic maps, L\'evy flights or opposition-based learning, 20 studies
+that hybridise it with other methods, and over a hundred applications~\citep{hassan2024hba}. MPA~\citep{faramarzi2020mpa}
+models the foraging of marine predators. It divides the run into three phases with different velocity ratios between
+predator and prey, uses Brownian motion in the first phase, a mixture of Brownian and L\'evy motion in the second and
+L\'evy motion in the third, and adds two mechanisms: a marine memory that keeps the better of the old and the new
+position of each agent, and a fish-aggregating-device (FAD) perturbation that occasionally makes long jumps. A review of
+102 MPA studies discusses its variants, hybrids and limitations, among them premature convergence on some problem
+classes~\citep{albetar2023mpa}.
 
-\subsection{Rotation invariance and coordinate-wise recombination}
-\citet{salomon1996rotation} showed that genetic algorithms with coordinate-wise operators lose much of their
-performance when a separable function is rotated, because their success relies on the independence of the variables.
-The same holds for binomial crossover in DE and for any operator that mixes solutions coordinate by coordinate. CMA-ES
-avoids the problem by adapting a full covariance matrix and is invariant to rotations of the search
-space~\citep{hansen2001cma}; this is one reason why benchmark suites such as BBOB~\citep{hansen2009bbob,hansen2021coco}
-and CEC2022~\citep{kumar2021cec2022} include rotated functions.
+HBA and MPA have complementary behaviour, which makes them natural candidates for hybridisation. Al-Dhaifallah et al.\
+combined them in series, population-division and switching schemes for an electric-vehicle hosting-capacity
+problem~\citep{aldhaifallah2024mpahba}. MPHBS~\citep{flores2026mphbs} runs both on separate populations and couples them
+through a mediator that recombines their members dimension by dimension under the control of a SARSA learner;
+\citet{g2026deconstruction} showed that a budget-matched random mediator performs as well as the learner, so the gains
+come from the exchange itself.
+
+\subsection{Multi-population hybrids and information exchange}
+Talbi's taxonomy distinguishes low-level hybrids, which replace a component of one algorithm with another, from
+high-level hybrids, in which self-contained algorithms cooperate, and relay hybrids, which run them in sequence, from
+teamwork hybrids, which run them in parallel~\citep{talbi2002taxonomy,blum2011hybrid}. Island and multi-population
+models have long studied the design of migration: what is exchanged, between which populations, how often and how
+much~\citep{alba2002parallel,ma2019multipop}. Classical migration moves whole individuals. The MPHBS mediator instead
+builds new individuals from coordinates of members of both populations, so it acts like a multi-parent crossover between
+populations and inherits the properties, and the weaknesses, of coordinate-wise crossover. Population diversity, which
+the exchange directly affects, is a central quantity for understanding the balance between exploration and
+exploitation~\citep{crepinsek2013exploration,squillero2016diversity,morales2020balance}.
+
+\subsection{Learning-based control of the exchange}
+Machine learning is increasingly used to control metaheuristics~\citep{talbi2021ml}. Parameter
+control~\citep{karafotias2015parameter} and adaptive operator selection with bandits~\citep{fialho2010bandit} were
+followed by reinforcement-learning controllers~\citep{drugan2019rl,song2024rlea}, for example Q-learning to switch
+between exploration and exploitation in grey wolf and whale optimisers~\citep{seyyedabbasi2021rl} or to set the
+parameters of the sine cosine algorithm~\citep{hamad2022qlesca}. MPHBS belongs to this line. Because its learned
+decisions did not outperform random ones at the same budget~\citep{g2026deconstruction}, EIG-MPHBS uses the simpler
+random mediator and changes the space in which the mediator works rather than the way it decides.
+
+\subsection{Rotation invariance}
+An algorithm is rotation invariant if its behaviour on $f(xQ)$ for an orthogonal $Q$ is the rotated image of its
+behaviour on $f(x)$. \citet{salomon1996rotation} showed that genetic algorithms with coordinate-wise operators lose much
+of their performance when a separable function is rotated, because their success relies on the independence of the
+variables. The same applies to binomial crossover in DE and to any operator that mixes solutions coordinate by
+coordinate. CMA-ES adapts a full covariance matrix and is rotation invariant by design~\citep{hansen2001cma}, which is
+one reason for its strength on ill-conditioned problems. Benchmark suites such as BBOB~\citep{hansen2009bbob,
+hansen2021coco} and CEC2022~\citep{kumar2021cec2022} therefore include rotated functions, and BBOB contains separable and
+rotated versions of the same functions, which we use to measure rotation dependence directly.
 
 \subsection{Eigenvector-based recombination}
-Several operators recombine solutions in a coordinate system that follows the population. \citet{guo2015eigen} perform
-DE crossover in the eigenvector frame of the population covariance with a given probability, and CoBiDE uses covariance
-matrix learning in the same way~\citep{wang2014cobide}. \citet{civicioglu2018aplus} propose a rotation-invariant
-crossover based on QR decomposition. EA4eig~\citep{bujok2022ea4eig}, a cooperative model of CMA-ES, CoBiDE, jSO and IDE
-with eigen crossover, was among the strongest entries of the CEC2022 competition. In evolutionary multitasking,
-\citet{tang2021regularized} project the individuals of two populations onto aligned eigen-subspaces before recombining
-them, and \citet{tang2022adaptive} transfer knowledge between tasks in a coordinate system built from the major
-eigenvectors of both populations. QLRUN~\citep{adam2027qlrun} combines Q-learning with covariance matrix learning in a
-single metaheuristic.
+Table~\ref{tab:related} summarises the operators that recombine solutions in a coordinate system derived from the
+population. \citet{guo2015eigen} perform DE crossover in the eigenvector frame of the population covariance with a given
+probability, so that crossover follows the principal directions of the population; CoBiDE~\citep{wang2014cobide} uses
+covariance matrix learning in the same way, together with a bimodal parameter distribution. \citet{civicioglu2018aplus}
+make crossover rotation invariant with a QR decomposition. EA4eig~\citep{bujok2022ea4eig} lets CMA-ES, CoBiDE, jSO and
+IDE cooperate and applies eigen crossover in each; it was among the strongest entries of the CEC2022 competition. In
+evolutionary multitasking, \citet{tang2021regularized} project the individuals of two task populations onto aligned
+eigen-subspaces before recombining them, and \citet{tang2022adaptive} transfer knowledge between tasks in a coordinate
+system built from the major eigenvectors of both populations. QLRUN~\citep{adam2027qlrun} combines Q-learning with
+covariance matrix learning in a single metaheuristic.
 
-\subsection{Positioning}
-The idea of exchanging information between populations in an eigen frame of their joint distribution is therefore known;
-the closest precedents are the inter-task transfers of \citet{tang2021regularized,tang2022adaptive}. A Scopus search
+\begin{table*}[t]
+\centering
+\caption{Recombination in population-derived coordinate systems (from the cited papers' descriptions).}
+\label{tab:related}
+\footnotesize
+\begin{tabular}{p{3.3cm}p{3.0cm}p{3.6cm}p{5.1cm}}
+\toprule
+Work & Host algorithm & Populations & Use of the eigen / rotated frame \\
+\midrule
+\citet{guo2015eigen} & DE & one & crossover in the eigenvector frame of the population, with a probability \\
+CoBiDE~\citep{wang2014cobide} & DE & one & crossover in the frame of the learned covariance \\
+A+~\citep{civicioglu2018aplus} & evolutionary search & one & QR-based rotation-invariant crossover \\
+EA4eig~\citep{bujok2022ea4eig} & CMA-ES, CoBiDE, jSO, IDE & four cooperating & eigen crossover inside each algorithm \\
+\citet{tang2021regularized} & multitask EA & one per task & inter-task transfer in aligned eigen-subspaces \\
+\citet{tang2022adaptive} & multifactorial EA & one per task & inter-task transfer in a frame from both populations' eigenvectors \\
+QLRUN~\citep{adam2027qlrun} & RUN & one & covariance matrix learning plus Q-learning \\
+\midrule
+EIG-MPHBS (this work) & HBA + MPA hybrid & two heterogeneous & dimension-wise inter-population exchange in the frame of
+the pooled covariance, with probability $q$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Research gap}
+Exchanging information between populations in an eigen frame of their joint distribution is therefore known, and the
+closest precedents are the inter-task transfers of \citet{tang2021regularized,tang2022adaptive}. A Scopus search
 (title, abstract and keywords, 28~October~2026; queries in the repository) found no study that applies it to the
-dimension-wise exchange of HBA--MPA hybrids or that analyses the rotation dependence of such mediators. Our contribution
-is thus an application of a known principle to a new and recently popular class of hybrids, with a proof of its
-invariance in this setting, a demonstration of its cost, and a comparison against a wide set of algorithms under a
-design fixed in advance.
+dimension-wise exchange of HBA--MPA hybrids, or that analyses how such mediators depend on the coordinate system. This
+matters for practitioners, because hybrids of recent metaheuristics are widely used in applications, often with
+mediators of this kind, and their weakness on coupled variables is rarely examined. Our contribution is an application
+of a known principle to this class of hybrids, with a proof of its invariance in this setting, an analysis of its
+mechanism and cost, and a comparison against a wide set of algorithms under a design fixed in advance.
 
 %% =====================================================================
-\section{MPHBS}
+\section{The MPHBS hybrid}
 \label{sec:mphbs}
 
+\subsection{Notation}
 We minimise $f:\Omega\to\mathbb{R}$ over a box $\Omega=[\ell,u]^D$; points are row vectors. MPHBS maintains an HBA
-population $X^H\in\mathbb{R}^{N\times D}$ and an MPA population $X^M\in\mathbb{R}^{N\times D}$ ($N=30$ each), their best
-members $p^H,p^M$, and the global best $p^\star$ with value $f^\star$. Each iteration has three stages
-(Algorithm~\ref{alg:iteration}).
+population $X^H\in\mathbb{R}^{N\times D}$ and an MPA population $X^M\in\mathbb{R}^{N\times D}$ with fitness values
+$f^H_i,f^M_i$, the best members $p^H,p^M$ of each population, and the global best $p^\star$ with value $f^\star$. MPA
+keeps a marine memory $(\tilde X^M,\tilde f^M)$. $t=0,\dots,T-1$ is the iteration, $\mathrm{clip}$ the projection onto
+$\Omega$, $\odot$ the element-wise product and $U(a,b)$ a uniform random number. An iteration consists of the native
+moves (Phase 1), an optional FAD stage, and the exchange (Phase 2).
 
-\paragraph{Phase 1: native moves} HBA and MPA each update their population with their own operators; each candidate is
-evaluated and replaces its parent if better, and MPA applies its marine-memory rule. A FAD perturbation of the MPA
-population follows, before Phase 2 on CEC2022 and BBOB and after it on FIR, as in the authors' configurations. Phase 1
-costs $2N$ evaluations, the FAD stage $N$. A full description of the operators is given
-by~\citet{flores2026mphbs} and~\citet{g2026deconstruction}.
+\subsection{Phase 1: native moves}
+\paragraph{HBA} With the smell intensity $I_i = r_i\,\|x^H_i - x^H_{i+1}\|^2 / (4\pi\|x^H_i - p^H\|^2 + \epsilon)$,
+the density factor $\alpha_t = C\exp(-(t+1)/T)$, a random sign $F\in\{-1,1\}$ and $d_{ij}=p^H_j-x^H_{ij}$, agent $i$
+proposes
+\begin{equation}
+\hat x_{ij} = \begin{cases}
+p^H_j + F\beta I_i\,p^H_j + F r_3\alpha_t d_{ij}\,\psi_{ij} & r<0.5 \quad\text{(digging)},\\
+p^H_j + F r_7\alpha_t d_{ij} & \text{otherwise} \quad\text{(honey)},
+\end{cases}
+\label{eq:hba}
+\end{equation}
+with $\psi_{ij}=\bigl|\cos(2\pi r_4)\bigl(1-\cos(2\pi r_5)\bigr)\bigr|$, $\beta=6$, $C=2$ and $r,r_3,\dots,r_7\sim U(0,1)$.
+The proposal replaces $x^H_i$ if it is better.
 
-\paragraph{Phase 2: the mediator} From each population the mediator takes a subset of
-$N_\mathrm{sub}=\min(N,\max(5,\mathrm{round}(\rho N)))$ members (half of them the best, the rest at random), sorted by
-fitness, and stacks them into a tensor $R\in\mathbb{R}^{N_\mathrm{sub}\times D\times 2}$, where $R_{n,d,c}$ is
-coordinate $d$ of the rank-$n$ member of source $c\in\{H,M\}$. Starting from $v=p^\star$ (one evaluation), it runs
-$E=N_\mathrm{sub}N_i$ episodes. The dimensions are split into five blocks of size $\lceil D/5\rceil$ visited along random
-permutations. In episode $e$ with active block $A_e$, $K$ candidates are built: candidate $k$ copies $v$ and, for each
-$d\in A_e$, sets $v'_d=R_{n_d,d,c_d}$ for a chosen source $c_d$ and rank $n_d$. In MPHBS the choice is made by policies
-over a SARSA value table; in the random-mediator variant MPHBS-R it is drawn uniformly. A proxy score that needs no
-evaluation,
+\paragraph{MPA} With the elite $E=p^M$, $P=0.5$, the adaptive factor $\mathrm{CF}_t=(1-t/T)^{2t/T}$, Brownian steps
+$R_B\sim\mathcal N(0,1)^{N\times D}$ and L\'evy steps $R_L = 0.05\,\mathrm{L\acute evy}(1.5)$, agent $i$ moves by
+\begin{equation}
+x^M_i \leftarrow \begin{cases}
+x^M_i + P R\odot R_B\odot(E - R_B\odot x^M_i) & \text{phase I},\\
+E + P\,\mathrm{CF}_t\,R_B\odot(R_B\odot E - x^M_i) & \text{phase II},\ i>\tfrac N2,\\
+x^M_i + P R\odot R_L\odot(E - R_L\odot x^M_i) & \text{phase II},\ i\le\tfrac N2,\\
+E + P\,\mathrm{CF}_t\,R_L\odot(R_L\odot E - x^M_i) & \text{phase III},
+\end{cases}
+\label{eq:mpa}
+\end{equation}
+where phases I, II, III are $t<T/3$, $T/3\le t<2T/3$ and $t\ge 2T/3$, and $R\sim U(0,1)^D$. After evaluation, the
+marine memory keeps the old position where it was better and is then updated:
+\begin{equation}
+x^M_i \leftarrow \begin{cases}\tilde x^M_i & \tilde f^M_i < f(x^M_i),\\ x^M_i & \text{otherwise},\end{cases}
+\qquad (\tilde X^M,\tilde f^M)\leftarrow (X^M, f^M).
+\label{eq:memory}
+\end{equation}
+Phase 1 costs $2N$ function evaluations (FEs).
+
+\paragraph{FAD stage} With probability $\mathrm{FADs}=0.2$ the MPA population is perturbed by
+$\mathrm{CF}_t\,(\ell + R\odot(u-\ell))\odot B$ with a Bernoulli$(0.2)$ mask $B$, otherwise by
+$\bigl(\mathrm{FADs}(1-r)+r\bigr)(x^M_{\pi_1(i)}-x^M_{\pi_2(i)})$ for random permutations $\pi_1,\pi_2$. Every candidate
+is evaluated ($N$ FEs) and accepted greedily. The stage is placed before Phase 2 on CEC2022 and BBOB and after it on FIR,
+as in the original design of MPHBS.
+
+\subsection{Phase 2: the dimension-wise exchange}
+\label{sec:exchange}
+\paragraph{Ranked subsets} From each population the mediator draws a subset of
+\begin{equation}
+N_\mathrm{sub}=\min\bigl(N,\max(5,\mathrm{round}(\rho N))\bigr)
+\end{equation}
+members, half of them the best and the rest at random, and sorts it by fitness. The subsets form a tensor $R\in\mathbb{R}^{N_\mathrm{sub}\times D\times 2}$, where $R_{n,d,c}$ is
+coordinate $d$ of the rank-$n$ member of source $c\in\{H,M\}$.
+
+\paragraph{Episodes} The mediator starts from the current vector $v=p^\star$ (one FE) and runs $E=N_\mathrm{sub}N_i$
+episodes. The dimensions are split into five blocks (one if $D<10$) of size $b=\lceil D/5\rceil$, visited along random
+permutations. In episode $e$ with active block $A_e$, $K$ candidates are assembled: candidate $k$ copies $v$ and, for
+each $d\in A_e$, sets $v'_d=R_{n_d,d,c_d}$ for a source $c_d$ and a rank $n_d$. In the published MPHBS these choices are
+made by five policies over a SARSA value table; in the random-mediator variant MPHBS-R, and in EIG-MPHBS, they are drawn
+uniformly. A proxy score that costs no evaluation,
 \begin{equation}
 s(v') = -w_\mathrm{rank}\,\overline{(n_d+1)}_{d\in A_e} + w_\mathrm{nov}\,\overline{|v'_d-v_d|}_{d\in A_e}
         - w_\mathrm{best}\,\|v'_{A_e}-p^\star_{A_e}\|_2,
 \label{eq:proxy}
 \end{equation}
-selects one candidate, which is evaluated (one evaluation per episode). It is accepted if it improves $f(v)$, and
-otherwise with a small probability that decreases over the run. Accepted candidates replace the worst subset members
-that they improve, and a new global best is copied into both subsets. At the end of Phase 2 the subsets are written back.
+selects one candidate, which favours coordinates from well-ranked members, rewards novelty and penalises distance from
+the global best. Only the selected candidate is evaluated (one FE per episode).
 
-\paragraph{Configurations} We use the authors' configurations: $K=7$, $N_i=3$, $\rho=0.25$ (so $N_\mathrm{sub}=8$,
-$E=24$) on CEC2022 and BBOB, and $K=3$, $N_i=9$ ($E=72$) on FIR, with $w_\mathrm{rank}=1$, $w_\mathrm{nov}=0.3$,
-$w_\mathrm{best}=0.05$. One iteration costs $3N+1+E$ evaluations.
+\paragraph{Acceptance and update} An improving candidate is accepted; a worse one is accepted with probability
+\begin{equation}
+p_e = \min\Bigl(0.25,\ 0.2\,(1-g_t)^2\bigl(0.35+0.65(1-\lambda_e)\bigr)\exp\bigl(-4\max(0,\Delta_e)\bigr)\Bigr),
+\label{eq:accept}
+\end{equation}
+where $g_t=t/(T-1)$, $\lambda_e=(e-1)/(E-1)$ and $\Delta_e=(f(v')-f(v))/(|f(v)|+\epsilon)$. An accepted candidate
+replaces the worst member of each subset that it improves; a new global best is recorded and copied into a random row of
+both subsets. At the end of Phase 2 the subsets are written back into the populations and the best members are
+synchronised. One iteration costs $3N+1+E$ FEs.
+
+\subsection{Parameter settings}
+\label{sec:params}
+We keep the parameter values recommended for MPHBS after the parameter study in its original
+publication~\citep{flores2026mphbs} and do not retune them, so that all three hybrids share the same settings and any
+difference is due to the exchange alone. With $N=30$ agents per population: on CEC2022 and BBOB, $K=7$ candidates per
+episode, $N_i=3$ episodes per subset member and $\rho=0.25$, so $N_\mathrm{sub}=8$ and $E=24$ episodes per iteration,
+with the FAD stage before Phase 2; on FIR, $K=3$, $N_i=9$ and $E=72$, with the FAD stage after Phase 2. In all cases
+$w_\mathrm{rank}=1$, $w_\mathrm{nov}=0.3$ and $w_\mathrm{best}=0.05$.
 
 %% =====================================================================
 \section{EIG-MPHBS}
 \label{sec:method}
 
 \subsection{Why the exchange depends on the coordinate system}
-The mediator builds each candidate by taking coordinate $d$ from one stored solution and coordinate $d'$ from another.
-If the objective is separable, this is a sound way to combine good partial solutions. If the objective is
-$f(x)=g(xQ)$ for a rotation $Q$, the meaningful directions are the columns of $Q$, and a candidate assembled from the
-coordinates of different solutions generally lies far from all of them along those directions. Its value is then poor
-even when every source solution is good, so few exchange candidates are accepted and the exchange contributes little.
-The populations themselves carry the information needed to correct this: on such problems their spread aligns with the
-shape of the basin they occupy, so the principal axes of their covariance approximate the directions of the problem.
+Consider a separable objective $f(x)=\sum_d g_d(x_d)$. If two good solutions $a$ and $b$ are each good in different
+coordinates, the candidate that takes the good coordinates of each is better than both: coordinate-wise exchange
+combines building blocks. Now rotate the problem, $f_Q(x)=f(xQ^\top)$ with an orthogonal $Q$. The building blocks are
+now the coordinates of $xQ^\top$, i.e.\ the projections onto the columns of $Q$, and copying raw coordinates mixes them.
+For an ill-conditioned rotated function such as the ellipsoid, even two nearby good solutions can produce, by
+coordinate-wise exchange, a candidate that leaves the narrow valley in which both lie. Such candidates are rejected, the
+exchange stalls, and the hybrid loses the main channel through which its two populations cooperate.
+
+The populations themselves carry the information needed to correct this. Late in the search, the members of both
+populations are spread along the valley they occupy, so the principal axes of their covariance approximate the
+directions in which the objective varies slowly or quickly. Recombining along these axes keeps candidates inside the
+valley.
 
 \subsection{The eigen-frame exchange}
-At the start of Phase 2, with probability $q$, EIG-MPHBS computes the sample covariance of the pooled populations,
+At the start of Phase 2, with probability $q$, EIG-MPHBS computes the sample covariance of the pooled populations and
+its eigendecomposition,
 \begin{equation}
 C = \mathrm{cov}\!\begin{pmatrix} X^H \\ X^M \end{pmatrix} = B\Lambda B^\top,
 \label{eq:cov}
 \end{equation}
-with an orthonormal eigenvector matrix $B$ (columns ordered by eigenvalue). All mediator operations of the iteration are
-then performed on the coordinates $z=xB$ instead of $x$: the tensor $R$ holds the projected subsets, the start point is
-$z=p^\star B$, candidates are assembled coordinate-wise in $z$, and the proxy score~\eqref{eq:proxy} is computed in $z$.
-The selected candidate is mapped back and clipped to the box, $x'=\mathrm{clip}(z'B^\top)$, and evaluated; if it is
-accepted, its eigen coordinates are recomputed from the clipped point, $z\leftarrow x'B$. With probability $1-q$ the
-iteration uses the original axes ($B=I$), so the method reduces to MPHBS-R in those iterations.
+with an orthonormal eigenvector matrix $B$ whose columns are ordered by eigenvalue. Pooling both populations gives
+$2N$ points for a $D\times D$ estimate and describes the region that the hybrid as a whole is exploring. All operations
+of the mediator in this iteration are then performed on the eigen coordinates $z=xB$ instead of $x$:
+\begin{enumerate}
+\item the tensor $R$ holds the projected subsets $S^HB$ and $S^MB$, and the start point is $z=p^\star B$;
+\item candidates are assembled coordinate-wise in $z$, i.e.\ along the principal axes of the populations;
+\item the proxy score~\eqref{eq:proxy} is computed on eigen coordinates;
+\item the selected candidate is mapped back and clipped to the box, $x'=\mathrm{clip}(z'B^\top)$, and evaluated;
+\item if it is accepted, its eigen coordinates are recomputed from the clipped point, $z\leftarrow x'B$, so that the
+current vector always corresponds to a feasible evaluated point.
+\end{enumerate}
+With probability $1-q$ the iteration uses the original axes ($B=I$), and the method is then identical to MPHBS-R.
+Fig.~\ref{fig:architecture} shows the architecture of the method and Algorithm~\ref{alg:iteration} one iteration.
 
-EIG-MPHBS uses the random mediator of MPHBS-R, not the SARSA learner, because the learner brings no benefit at the same
-budget~\citep{g2026deconstruction} and its value table is indexed by coordinates, whose meaning would change whenever
-the frame changes. We set $q=0.5$. This keeps the axis frame available for separable or nearly separable structure, on
-which coordinate-wise exchange is effective, while using the eigen frame for coupled structure. The value $q=0.5$ was
-chosen over $q=1$ in a 10-run pilot on 32 instances (BBOB f1, f3, f8, f10, f12, f15, f16, f21; CEC2022 $D=20$; FIR);
-those instances are excluded from the confirmatory test (Section~\ref{sec:design}). Algorithm~\ref{alg:iteration}
-summarises one iteration and Fig.~\ref{fig:scheme} the exchange.
+\subsection{Design choices}
+\paragraph{Random mediator} EIG-MPHBS uses the uniform random mediator of MPHBS-R rather than the SARSA learner, for
+two reasons. The learner brings no benefit at the same budget~\citep{g2026deconstruction}, and its value table is
+indexed by coordinates, whose meaning would change whenever the frame changes from one iteration to the next.
+
+\paragraph{Frame probability} We set $q=0.5$. The axis frame remains useful on separable or nearly separable structure,
+where coordinate-wise exchange combines building blocks, and the FIR problems show such structure in part. Mixing the
+two frames keeps both kinds of exchange. The value $q=0.5$ was chosen over $q=1$ in a 10-run pilot on 32 instances
+(BBOB f1, f3, f8, f10, f12, f15, f16, f21; CEC2022 $D=20$; FIR), reported in Section~\ref{sec:ablation}; those
+instances are excluded from the confirmatory test (Section~\ref{sec:design}).
+
+\paragraph{Feasibility} Rotation can move a recombined point outside the box. We clip after mapping back, which keeps
+the evaluation budget unchanged; the re-projection of accepted points keeps the internal state consistent.
+
+\begin{figure*}[!t]
+\centering
+\begin{tikzpicture}[
+  font=\scriptsize,
+  node distance=0.42cm,
+  blk/.style={draw=black!45, fill=#1, rounded corners=3pt, align=center, minimum height=0.75cm,
+              text width=4.3cm, inner sep=3pt},
+  dec/.style={draw=black!60, fill=white, diamond, aspect=2.8, align=center, inner sep=0.5pt},
+  arr/.style={-{Stealth[length=2mm]}, semithick},
+  lbl/.style={font=\scriptsize\itshape, text=black!65}]
+% ---------------- left: one iteration
+\node[blk=cgray] (init) {Initialisation: $X^H, X^M \sim U(\Omega)$, $2N$ FEs};
+\node[blk=cblueL, text width=1.85cm, below=0.75cm of init.south west, anchor=north west] (hba) {HBA move\\digging / honey\\Eq.~\eqref{eq:hba}};
+\node[blk=corangeL, text width=1.85cm, below=0.75cm of init.south east, anchor=north east] (mpa) {MPA move\\Brownian / L\'evy\\Eqs.~\eqref{eq:mpa}, \eqref{eq:memory}};
+\node[draw=black!50, dashed, rounded corners, fit=(hba)(mpa), inner sep=4pt] (ph1) {};
+\node[lbl, anchor=south east] at (ph1.north east) {Phase 1: $2N$ FEs};
+\node[blk=corangeL, below=of ph1] (fad1) {FAD stage (CEC2022, BBOB): $N$ FEs};
+\node[blk=cgray, below=of fad1] (gb) {global best $p^\star$};
+\node[blk=cgreenL, below=of gb, minimum height=1.1cm] (p2) {\textbf{Phase 2: eigen-frame exchange}\\(detail on the right), $1+E$ FEs};
+\node[blk=corangeL, below=of p2] (fad2) {FAD stage (FIR): $N$ FEs};
+\node[dec, below=of fad2] (stop) {budget\\reached?};
+\node[blk=cgray, below=of stop] (out) {return $p^\star$};
+\draw[arr] (init) -- (ph1);
+\draw[arr] (ph1) -- (fad1);
+\draw[arr] (fad1) -- (gb);
+\draw[arr] (gb) -- (p2);
+\draw[arr] (p2) -- (fad2);
+\draw[arr] (fad2) -- (stop);
+\draw[arr] (stop) -- node[lbl, right] {yes} (out);
+\draw[arr] (stop.west) -- node[lbl, above] {no} ++(-1.1,0) |- (ph1.west);
+% ---------------- right: Phase 2 detail
+\node[blk=white, right=2.6cm of init] (gate) {draw $r\sim U(0,1)$};
+\node[blk=cblueL, text width=2.6cm, below=0.6cm of gate.south, anchor=north east, xshift=-0.15cm] (eig) {$r<q$: $B\gets$ eigenvectors\\of $\mathrm{cov}[X^H;X^M]$};
+\node[blk=cgray, text width=2.6cm, below=0.6cm of gate.south, anchor=north west, xshift=0.15cm] (axis) {$r\ge q$: $B\gets I$\\(axis frame)};
+\node[blk=white, below=0.6cm of gate |- eig.south] (sub) {ranked subsets $S^H, S^M$ (elite + random)};
+\node[blk=cblueL, below=of sub] (proj) {project: $R\gets(S^HB,\,S^MB)$,\\$z\gets p^\star B$};
+\node[blk=white, text width=5.8cm, below=of proj] (ep) {\textbf{episode} $e=1,\dots,E$: next block $A_e$;\\
+  $K$ candidates $z^{(k)}_d\gets R_{n_d,d,c_d}$ for $d\in A_e$,\\
+  source $c_d$ and rank $n_d$ uniform;\\
+  select one by the proxy score, Eq.~\eqref{eq:proxy}};
+\node[blk=cblueL, below=of ep] (back) {map back: $x'=\mathrm{clip}(z'B^\top)$};
+\node[blk=white, text width=5.8cm, below=of back] (acc) {evaluate $f(x')$ (1 FE); accept by Eq.~\eqref{eq:accept};\\
+  update subsets, $z\gets x'B$, $p^\star$};
+\node[blk=white, below=of acc] (wb) {write subsets back into $X^H, X^M$};
+\draw[arr] (gate) -- (eig);
+\draw[arr] (gate) -- (axis);
+\draw[arr] (eig) -- (sub);
+\draw[arr] (axis) -- (sub);
+\draw[arr] (sub) -- (proj);
+\draw[arr] (proj) -- (ep);
+\draw[arr] (ep) -- (back);
+\draw[arr] (back) -- (acc);
+\draw[arr] (acc.east) -- ++(0.45,0) |- node[lbl, right, pos=0.25, align=left] {next\\episode} (ep.east);
+\draw[arr] (acc) -- (wb);
+\begin{scope}[on background layer]
+\node[draw=cblue, fill=cgreenL!35, rounded corners, fit=(gate)(eig)(axis)(ep)(wb), inner xsep=14pt, inner ysep=6pt] (detail) {};
+\end{scope}
+\draw[dashed, cblue, thick] (p2.north east) -- (detail.north west);
+\draw[dashed, cblue, thick] (p2.south east) -- (detail.south west);
+\end{tikzpicture}
+\caption{Architecture of EIG-MPHBS. Left: one iteration of the hybrid. Right: the eigen-frame exchange (Phase 2).
+Blue boxes are the only additions to the random-mediator hybrid MPHBS-R; they use no function evaluations.}
+\label{fig:architecture}
+\end{figure*}
 
 \begin{algorithm}[t]
-\caption{One iteration of EIG-MPHBS. Lines~\ref{line:frame}--\ref{line:back} are the only differences from MPHBS-R.}
+\caption{One iteration of EIG-MPHBS. Lines~\ref{line:frame}, \ref{line:proj} and~\ref{line:back} differ from MPHBS-R.}
 \label{alg:iteration}
 \small
 \begin{algorithmic}[1]
 \Require populations $X^H,X^M$, global best $p^\star$, iteration $t$, eigen-frame probability $q$
-\State HBA and MPA moves; evaluate; greedy replacement; marine memory \Comment{$2N$ FEs}
+\State HBA move \eqref{eq:hba} and MPA move \eqref{eq:mpa}; evaluate; greedy replacement; marine memory
+\eqref{eq:memory} \Comment{$2N$ FEs}
 \If{FAD before Phase 2} FAD stage \Comment{$N$}\EndIf
 \State $p^\star\gets$ best of $p^H,p^M$
 \State \textbf{if} $U(0,1)<q$ \textbf{then} $B\gets$ eigenvectors of $\mathrm{cov}([X^H;X^M])$ \textbf{else} $B\gets I$
-\Comment{0 FEs} \label{line:frame}
-\State draw ranked subsets $S^H,S^M$; $R\gets$ projected subsets $S^HB$, $S^MB$; $z\gets p^\star B$; $f_z\gets f(p^\star)$
-\Comment{1}
+\Comment{0} \label{line:frame}
+\State draw ranked subsets $S^H,S^M$; $R\gets(S^HB, S^MB)$; $z\gets p^\star B$; $f_z\gets f(p^\star)$
+\Comment{1} \label{line:proj}
 \For{$e=1,\dots,E$}
   \State $A_e\gets$ next block of dimensions
   \State for $k=1..K$: $z^{(k)}\gets z$; for $d\in A_e$ draw $(c_d,n_d)$ uniformly; $z^{(k)}_d\gets R_{n_d,d,c_d}$
   \State $z'\gets\arg\max_k s(z^{(k)})$ \eqref{eq:proxy}; $x'\gets\mathrm{clip}(z'B^\top)$; $f'\gets f(x')$
   \Comment{1} \label{line:back}
-  \If{accepted} $z\gets x'B$, $f_z\gets f'$; update $S^H,S^M$ and their projections in $R$\EndIf
+  \If{$f'<f_z$ or $U(0,1)<p_e$ \eqref{eq:accept}} $z\gets x'B$, $f_z\gets f'$; update $S^H,S^M$ and $R$\EndIf
   \If{$f'<f^\star$} $p^\star\gets x'$; copy $x'$ into a random row of $S^H$ and $S^M$\EndIf
 \EndFor
 \State write $S^H,S^M$ back into $X^H,X^M$; update $p^H,p^M,p^\star$
 \If{FAD after Phase 2} FAD stage \Comment{$N$}\EndIf
 \end{algorithmic}
 \end{algorithm}
-
-\begin{figure}[t]
-\centering
-\begin{tikzpicture}[
-  box/.style={draw, rounded corners=2pt, align=center, font=\small, minimum height=1.0cm, text width=2.6cm},
-  arr/.style={-{Stealth[length=2.2mm]}, thick}]
-\node[box] (pop) {HBA and MPA\\populations\\$X^H$, $X^M$};
-\node[box, right=0.7cm of pop] (cov) {pooled covariance\\$C=B\Lambda B^\top$\\(0 FEs)};
-\node[box, right=0.7cm of cov] (proj) {project subsets\\and $p^\star$:\\$z = xB$};
-\node[box, below=0.9cm of proj] (rec) {coordinate-wise\\exchange in $z$\\(mediator)};
-\node[box, left=0.7cm of rec] (back) {map back\\$x'=\mathrm{clip}(z'B^\top)$};
-\node[box, left=0.7cm of back] (eval) {evaluate $f(x')$\\accept, update\\(1 FE per episode)};
-\draw[arr] (pop) -- (cov);
-\draw[arr] (cov) -- (proj);
-\draw[arr] (proj) -- (rec);
-\draw[arr] (rec) -- (back);
-\draw[arr] (back) -- (eval);
-\draw[arr] (eval) -- (pop);
-\end{tikzpicture}
-\caption{The eigen-frame exchange of EIG-MPHBS in one iteration (used with probability $q=0.5$; otherwise $B=I$).}
-\label{fig:scheme}
-\end{figure}
 
 %% =====================================================================
 \section{Properties}
@@ -324,56 +540,64 @@ episode in either frame. The covariance of $2N$ points costs $O(ND^2)$, the symm
 each projection or back-projection of a $D$-vector $O(D^2)$.
 \end{proof}
 
-For $D\le 31$ and $N=30$ this overhead is negligible compared with the cost of the objective evaluations and the
-mediator itself; Section~\ref{sec:cost} measures it. A unit test checks that EIG-MPHBS and MPHBS-R use identical
-evaluation counts on every run.
+\paragraph{Overall complexity} Phase 1 and the FAD stage cost $O(ND)$ arithmetic per iteration plus $3N$ evaluations,
+and the mediator $O(EKD)$ plus $1+E$ evaluations. With $T$ iterations, EIG-MPHBS costs
+$O\bigl(T(ND^2+D^3+EKD+ED^2)\bigr)$ arithmetic and $T(3N+1+E)$ evaluations, against $O\bigl(T(ND+EKD)\bigr)$ and the same
+number of evaluations for MPHBS-R. For $D\le 31$ and $N=30$ the extra arithmetic is small compared with the mediator;
+Section~\ref{sec:cost} measures it. A unit test checks that EIG-MPHBS and MPHBS-R use identical evaluation counts.
 
 %% =====================================================================
 \section{Experimental setup}
 \label{sec:setup}
 
 \subsection{Benchmarks}
-We use four benchmark sets (56 instances):
+We use four benchmark sets with 56 instances in total:
 \begin{itemize}
 \item CEC2022~\citep{kumar2021cec2022}, F1--F12, at $D=10$ and $D=20$ (24 instances), computed with the official code.
+The suite contains basic, hybrid and composition functions, all shifted and most rotated.
 \item BBOB~\citep{hansen2009bbob}, f1--f24 at $D=20$, with problem instance $((r-1)\bmod 15)+1$ in run $r$. The suite
-contains separable and rotated versions of the same functions, which allows a direct test of rotation dependence.
-\item Eight FIR filter-design problems from the MPHBS study~\citep{flores2026mphbs} ($D=31$): low-pass, high-pass,
-band-pass and band-stop filters, each in an easier and a harder variant, with coefficients $h\in[-1,1]^{31}$ and the
-objective
+covers separable, moderately conditioned, ill-conditioned, multimodal with global structure and multimodal with weak
+structure functions, and contains separable and rotated versions of the same functions, which allows a direct test of
+rotation dependence.
+\item Eight FIR filter-design problems ($D=31$) introduced with MPHBS~\citep{flores2026mphbs}: low-pass, high-pass,
+band-pass and band-stop filters of order 30, each in an easier and a harder variant. The decision vector is the impulse
+response $h\in[-1,1]^{31}$ and the objective is
 \begin{equation}
 F(h) = W_p\,\frac{1}{|P|}\sum_{n\in P}\bigl(|H(\omega_n)|-1\bigr)^2 + W_s\,\frac{1}{|S|}\sum_{n\in S}|H(\omega_n)|^2,
 \label{eq:fir}
 \end{equation}
 where $H$ is the 2048-point discrete Fourier transform of $h$, $P$ and $S$ are the pass- and stop-band grid points,
-$W_p=1$ and $W_s\in\{100,120\}$.
+$W_p=1$ and $W_s\in\{100,120\}$. The coefficients interact through the frequency response, so the problems are not
+separable.
 \end{itemize}
-The budget is $2\times10^5$ evaluations on CEC2022 and BBOB and $1.5\times10^5$ on FIR. Each algorithm is run 30 times
-per instance. The outcome is the final error $f(x_\mathrm{best})-f^\star$ (the objective value on FIR), floored at
-$10^{-8}$.
+The budget is $2\times10^5$ FEs on CEC2022 and BBOB and $1.5\times10^5$ on FIR. Each algorithm is run 30 times per
+instance. The outcome is the final error $f(x_\mathrm{best})-f^\star$ (the objective value $F$ on FIR, whose optimum is
+unknown), floored at $10^{-8}$.
 
 \subsection{Algorithms}
-Table~\ref{tab:algos} lists the eleven algorithms. MPHBS, MPHBS-R and EIG-MPHBS share all code except the flags shown.
-HBA and MPA are the parent algorithms as ported in our framework, which was validated against the MPHBS authors' MATLAB
-results (no significant differences in 80 distribution comparisons on CEC2022 and FIR). PSO, DE, GWO and WOA are four
-widely used metaheuristics with their published default settings, and L-SHADE~\citep{tanabe2014lshade} and
-CMA-ES with IPOP restarts~\citep{hansen2001cma,auger2005ipop,hansen2019pycma} are state-of-the-art references. All
-algorithms use the same budget; the classical ones stop exactly at the budget, while the MPHBS family stops after the
-last complete iteration (199\,930 of 200\,000 evaluations on CEC2022 and BBOB, 149\,857 of 150\,000 on FIR). No
-algorithm was tuned on our benchmarks beyond the choice of $q$ described above.
+Table~\ref{tab:algos} lists the eleven algorithms and their settings. MPHBS, MPHBS-R and EIG-MPHBS share all code
+except the flags shown. HBA and MPA, the parent algorithms, were ported from the reference MATLAB code and validated
+against published per-run results (no significant differences in 80 distribution comparisons on CEC2022 and FIR). PSO,
+DE, GWO and WOA are four widely used metaheuristics with their standard settings from the original publications, and
+L-SHADE~\citep{tanabe2014lshade} and CMA-ES with IPOP restarts~\citep{hansen2001cma,auger2005ipop,hansen2019pycma} are
+state-of-the-art references; both were checked against published CEC results before the experiments. All algorithms
+use the same budget. The classical algorithms stop exactly at the budget, while the MPHBS family stops after the last
+complete iteration (199\,930 of 200\,000 evaluations on CEC2022 and BBOB, 149\,857 of 150\,000 on FIR). No algorithm was
+tuned on our benchmarks beyond the choice of $q$ described above.
 
 \begin{table*}[t]
 \centering
-\caption{Algorithms and settings. $N$: population size; HBA--MPA hybrids run two populations of $N$ each.}
+\caption{Algorithms and settings. $N$: population size; the HBA--MPA hybrids run two populations of $N$ each.}
 \label{tab:algos}
 \small
 \begin{tabular}{p{2.4cm}p{12.6cm}}
 \toprule
 Algorithm & Settings \\
 \midrule
-EIG-MPHBS & proposed; MPHBS with random mediator and eigen-frame exchange with probability $q=0.5$; $N=30$ \\
-MPHBS-R & MPHBS with a uniform random mediator at the same budget~\citep{g2026deconstruction}; $N=30$ \\
-MPHBS & as published, SARSA mediator~\citep{flores2026mphbs}; $N=30$; $K,N_i,\rho$ as in Section~\ref{sec:mphbs} \\
+EIG-MPHBS & proposed; random mediator and eigen-frame exchange with probability $q=0.5$; $N=30$; $K,N_i,\rho$ as in
+Section~\ref{sec:params} \\
+MPHBS-R & MPHBS with a uniform random mediator at the same budget~\citep{g2026deconstruction}; same settings \\
+MPHBS & SARSA mediator~\citep{flores2026mphbs}, learning rate $0.1$, discount $\gamma=0.3$; same settings \\
 HBA & \citet{hashim2022hba}; $N=30$, $\beta=6$, $C=2$ \\
 MPA & \citet{faramarzi2020mpa}; $N=30$, $P=0.5$, FADs $=0.2$ \\
 PSO & global best, inertia $0.9\to0.4$~\citep{kennedy1995pso,shi1998inertia}; $c_1=c_2=2$, $|v|\le0.2(u-\ell)$; $N=30$ \\
@@ -387,30 +611,37 @@ population doubled at each restart \\
 \end{tabular}
 \end{table*}
 
-\subsection{Design and statistics}
+\subsection{Experimental design and statistics}
 \label{sec:design}
 Runs with the same benchmark, instance and run number share their seed across all algorithms, so comparisons are
-paired. Before any confirmatory run we fixed in a design document the arms, the benchmarks and two hypotheses on a
+paired. Before any confirmatory run we fixed in a design document the algorithms, the benchmarks and two hypotheses on a
 held-out set of 28 instances that were not used in any pilot: CEC2022 $D=10$ F1--F12 and BBOB f2, f4--f7, f9, f11, f13,
 f14, f17--f20, f22--f24. For each instance we compute the Vargha--Delaney effect size~\citep{vargha2000}
-$A=P(e_1<e_2)+\tfrac12P(e_1=e_2)$ over all $30\times30$ pairs of final errors, where $e_1$ belongs to EIG-MPHBS.
+$A=P(e_1<e_2)+\tfrac12P(e_1=e_2)$ over all $30\times30$ pairs of final errors, where $e_1$ belongs to EIG-MPHBS; $A=0.5$
+means no difference and $A>0.5$ favours EIG-MPHBS.
 \begin{itemize}
-\item \textbf{H1}: EIG-MPHBS outperforms MPHBS-R, i.e.\ the median of $A$ over the held-out instances exceeds 0.5.
-This isolates the effect of the eigen frame.
-\item \textbf{H2}: EIG-MPHBS outperforms MPHBS.
+\item \textbf{H1} (RQ1): EIG-MPHBS outperforms MPHBS-R, i.e.\ the median of $A$ over the held-out instances exceeds
+0.5. Since the two differ only in the frame, this isolates the effect of the eigen frame.
+\item \textbf{H2} (RQ1): EIG-MPHBS outperforms MPHBS.
 \end{itemize}
 Each is tested with a one-sided Wilcoxon signed-rank test~\citep{wilcoxon1945} of $A-0.5$ over the 28 instances, with
-Holm correction~\citep{holm1979} over the two hypotheses at $\alpha=0.05$. All other analyses are secondary and
-descriptive: the same statistics on all 56 instances; per-instance paired Wilcoxon tests with Holm correction within
-each benchmark; Friedman ranks~\citep{derrac2011tutorial,demsar2006}; the rotation pairs of BBOB; the comparison with
-EA4eig; and run time. The six classical algorithms were added after the main analysis to provide the comparisons that
-are customary in this field; their addition is recorded in the design document and does not affect H1 and H2.
+Holm correction~\citep{holm1979} over the two hypotheses at $\alpha=0.05$. All other analyses are secondary: the same
+statistics on all 56 instances; per-instance two-sided paired Wilcoxon tests with Holm correction within each benchmark
+and comparator; Friedman ranks~\citep{derrac2011tutorial,demsar2006}; the rotation pairs of BBOB; per-iteration traces
+of the exchange; the comparison with EA4eig; and run time. The six classical algorithms were added after the main
+analysis to provide the comparisons that are customary in this field; their addition is recorded in the design document
+and does not affect H1 and H2.
+
+\subsection{Implementation}
+All algorithms are implemented in Python with NumPy in one framework that counts every evaluation and records the
+best-so-far value every 1000 evaluations (750 on FIR) and per-iteration traces of the hybrids. Runs were executed in
+parallel, one run per core, on a 12-core laptop.
 
 %% =====================================================================
 \section{Results}
 \label{sec:results}
 
-\subsection{Confirmatory tests}
+\subsection{Confirmatory tests (RQ1)}
 Table~\ref{tab:confirm} and Fig.~\ref{fig:heldout} show the confirmatory results. On the held-out instances, EIG-MPHBS
 is better than MPHBS-R on \res{H1-ngt} instances, tied on \res{H1-neq} and worse on \res{H1-nlt} (one-sided
 $p=\res{H1-p}$), and better than MPHBS on \res{H2-ngt}, tied on \res{H2-neq} and worse on \res{H2-nlt}
@@ -423,15 +654,14 @@ report the alternatives so that readers can weigh the result.
 
 The per-instance tests show where the effect comes from. Against MPHBS-R, EIG-MPHBS is significantly better on
 \res{H1-sigfor} held-out instances (BBOB f6, f9, f11, f14, f19) and worse on \res{H1-sigagainst} (f4, the separable
-Rastrigin with asymmetric penalty). Against MPHBS it is better on \res{H2-sigfor} and never significantly worse. The
-gains are concentrated on BBOB functions with ill-conditioned or rotated structure.
+Rastrigin variant). Against MPHBS it is better on \res{H2-sigfor} and never significantly worse. The gains are
+concentrated on BBOB functions with ill-conditioned or rotated structure.
 
-On all 56 instances, including the 28 used in the pilot or not held out, the picture is clearer: the median $A$ is
-\res{S1-H1-medA} against MPHBS-R ($p=\res{S1-H1-p}$; \res{S1-H1-sigfor} instances significantly better, \res{S1-H1-sigagainst}
-worse) and \res{S1-H2-medA} against MPHBS ($p=\res{S1-H2-p}$; \res{S1-H2-sigfor} better, \res{S1-H2-sigagainst}
-worse). The largest effects are on FIR (median $A$ \res{S1-H2-FIR-medA} against MPHBS) and CEC2022 $D=20$
-(\res{S1-H2-C20-medA}). These instances include the pilot instances on which $q$ was chosen, so their effect sizes may
-be optimistic.
+On all 56 instances the picture is clearer: the median $A$ is \res{S1-H1-medA} against MPHBS-R ($p=\res{S1-H1-p}$;
+\res{S1-H1-sigfor} instances significantly better, \res{S1-H1-sigagainst} worse) and \res{S1-H2-medA} against MPHBS
+($p=\res{S1-H2-p}$; \res{S1-H2-sigfor} better, \res{S1-H2-sigagainst} worse). The largest effects are on FIR (median
+$A$ \res{S1-H2-FIR-medA} against MPHBS) and CEC2022 $D=20$ (\res{S1-H2-C20-medA}). These instances include the pilot
+instances on which $q$ was chosen, so their effect sizes may be optimistic.
 
 \input{generated/tab_confirm.tex}
 
@@ -444,25 +674,50 @@ C10: CEC2022 $D=10$; B20: BBOB $D=20$.}
 \label{fig:heldout}
 \end{figure}
 
-\subsection{Rotation dependence}
+\subsection{Rotation dependence (RQ2)}
 \label{sec:rotation}
 Table~\ref{tab:rotation} compares BBOB functions that differ only by a rotation. On the separable ellipsoid (f2) all
 algorithms reach the accuracy floor. On the rotated ellipsoid (f10), MPHBS and MPHBS-R stall at median errors of
 \res{f10-MPHBS} and \res{f10-RND}, while EIG-MPHBS reaches \res{f10-EIG50}, a \res{f10-ratio-RND}-fold reduction
-relative to MPHBS-R. This is the mechanism the method targets: the exchange in the eigen frame recombines along the
-principal axes of the ellipsoid. The gap to CMA-ES and L-SHADE, which solve f10, remains, because Phase 1 of the hybrid
-is still coordinate-wise. On Rastrigin, the rotated version (f15) is hard for all three hybrids and the eigen frame does
-not help (median \res{f15-EIG50} against \res{f15-RND} for MPHBS-R); on the separable version (f3) EIG-MPHBS is slightly
-worse (\res{f3-EIG50} against \res{f3-RND}), as expected when half of the exchanges no longer use the axes along which
-the function separates. Multimodal rotated problems need more than a change of frame in the exchange step.
+relative to MPHBS-R and \res{f10-ratio-MPHBS}-fold relative to MPHBS. This is the case the method targets. The gap to
+CMA-ES and L-SHADE, which solve f10, remains, because Phase 1 of the hybrid is still coordinate-wise. On Rastrigin, the
+rotated version (f15) is hard for all three hybrids and the eigen frame does not help (median \res{f15-EIG50} against
+\res{f15-RND} for MPHBS-R); on the separable version (f3) EIG-MPHBS is slightly worse (\res{f3-EIG50} against
+\res{f3-RND}), as expected when half of the exchanges no longer follow the axes along which the function separates.
+Highly multimodal rotated problems need more than a change of frame in the exchange step.
 
 \input{generated/tab_rotation.tex}
 
-\subsection{Comparison with ten algorithms}
-Table~\ref{tab:ranks} gives the mean Friedman ranks of the eleven algorithms and Table~\ref{tab:wtl} the per-instance
-significance counts of EIG-MPHBS against each of them; Tables~\ref{tab:med-C10}--\ref{tab:med-FIR} in
-\ref{app:tables} give the median errors per instance. The Friedman test rejects equal performance on every benchmark
-($p\le\res{friedman-FIR}$).
+\subsection{Why the eigen frame helps: exchange acceptance and diversity (RQ2)}
+\label{sec:mechanism}
+Fig.~\ref{fig:mechanism} shows, for one separable and three coupled BBOB functions, the fraction of exchanged
+candidates that are accepted in each iteration and the diversity of the populations (mean distance to the centroid,
+normalised by the box width), as medians over 30 runs. On the separable ellipsoid f2, the three hybrids behave alike:
+many candidates are accepted at first and acceptance then drops as the populations converge. On the rotated ellipsoid
+f10 the axis-frame exchange almost stops working after the first few thousand evaluations: in the first quarter of the
+budget, \res{acc-B20-10-RND}\% of the candidates of MPHBS-R and \res{acc-B20-10-MPHBS}\% of those of MPHBS are accepted,
+against \res{acc-B20-10-EIG50}\% for EIG-MPHBS. The discus f11 shows the same pattern (\res{acc-B20-11-RND}\% and
+\res{acc-B20-11-MPHBS}\% against \res{acc-B20-11-EIG50}\%). Because the exchanged candidates now stay inside the
+valley, the populations of EIG-MPHBS contract faster along it, which is visible as a steeper decline in diversity on f10
+and f11. On f14 (sum of different powers, moderately coupled) the acceptance rates are similar and the effect is
+smaller. This supports the explanation of Section~\ref{sec:method}: the eigen frame restores the exchange channel on
+coupled problems rather than changing the native moves.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_mechanism.pdf}
+\caption{Mechanism of the eigen frame on BBOB $D=20$. Top: fraction of exchanged candidates accepted per iteration
+(moving average over 25 iterations). Bottom: population diversity (log scale). Medians over 30 runs. f2 is separable;
+f10 (ellipsoid), f11 (discus) and f14 (sum of different powers) are rotated.}
+\label{fig:mechanism}
+\end{figure*}
+
+\subsection{Comparison with ten algorithms (RQ3)}
+\label{sec:comparison}
+Fig.~\ref{fig:ranks} and Table~\ref{tab:ranks} give the mean Friedman ranks of the eleven algorithms, and
+Table~\ref{tab:wtl} and Fig.~\ref{fig:wtlmap} the per-instance significance of EIG-MPHBS against each of them.
+Tables~\ref{tab:med-C10}--\ref{tab:ms-FIR} in \ref{app:tables} give medians, means and standard deviations per
+instance. The Friedman test rejects equal performance on every benchmark ($p\le\res{friedman-FIR}$).
 
 EIG-MPHBS ranks \res{pos-EIG50} of 11 overall (mean rank \res{rank-EIG50}), behind L-SHADE (\res{rank-L-SHADE}) and
 CMA-ES (\res{rank-CMA-ES}) and ahead of MPHBS-R (\res{rank-RND}), MPHBS (\res{rank-MPHBS}) and all classical
@@ -477,19 +732,55 @@ algorithms, and many of the ties with it are CEC2022 $D=10$ functions that both 
 \res{win-WOA} instances and worse on \res{loss-PSO}, \res{loss-DE}, \res{loss-GWO} and \res{loss-WOA}. Over the six
 classical algorithms it wins \res{common-win} and loses \res{common-loss} of \res{common-n} comparisons.
 \item \textbf{Against L-SHADE and CMA-ES}, it is better on \res{win-L-SHADE} and \res{win-CMA-ES} instances and worse on
-\res{loss-L-SHADE} and \res{loss-CMA-ES}. On CEC2022 $D=10$ the three are close, but at $D=20$, on BBOB and on FIR the two
-references are clearly stronger.
+\res{loss-L-SHADE} and \res{loss-CMA-ES}. On CEC2022 $D=10$ the three are close, but at $D=20$, on BBOB and on FIR the
+two references are clearly stronger.
 \end{itemize}
-GWO and WOA perform poorly on these shifted problems; both are known to be biased towards the centre of the search
-space~\citep{kudela2022centre}, which our unit tests confirm on a shifted sphere.
+Fig.~\ref{fig:wtlmap} shows that the losses to L-SHADE and CMA-ES are spread over all benchmarks except CEC2022
+$D=10$, while the wins over the classical algorithms are nearly uniform. GWO and WOA perform poorly on these shifted
+problems; both are known to be biased towards the centre of the search space~\citep{kudela2022centre}, which our unit
+tests confirm on a shifted sphere.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.92\linewidth]{figures/fig_ranks.pdf}
+\caption{Mean Friedman rank of each algorithm per benchmark (markers) and over all 56 instances (vertical bar);
+1 = best. C10/C20: CEC2022 $D=10/20$; B20: BBOB $D=20$.}
+\label{fig:ranks}
+\end{figure}
 
 \input{generated/tab_ranks.tex}
 \input{generated/tab_wtl.tex}
 
-Fig.~\ref{fig:convergence} shows median convergence curves of seven algorithms on six instances. On BBOB f10, f14 and
-f19 and on CEC2022 $D=20$ F\res{conv-C20}, EIG-MPHBS separates from MPHBS and MPHBS-R early and keeps its lead. On f4
-the eigen frame slows it down slightly, and on the FIR case shown all three hybrids converge to similar values, with
-EIG-MPHBS ahead in mid-run. CMA-ES converges fastest on most instances.
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_wtl_map.pdf}
+\caption{Per-instance comparison of EIG-MPHBS with each algorithm (paired Wilcoxon over 30 runs, Holm within benchmark
+and comparator). Each column is one instance: CEC2022 F1--F12 at $D=10$ and $D=20$, BBOB f1--f24, FIR cases 1--8.}
+\label{fig:wtlmap}
+\end{figure*}
+
+\subsection{Distributions of the final error}
+Fig.~\ref{fig:boxplots} shows the distributions of the final error of all eleven algorithms on the two instances per
+benchmark where EIG-MPHBS differs most from MPHBS (\res{box-list}). The spread of EIG-MPHBS is generally narrower than
+that of MPHBS and MPHBS-R on these instances, and on BBOB f11 and FIR case 3 its whole distribution lies below theirs.
+The boxplots also show how far the classical metaheuristics fall behind on the shifted and rotated problems, and the
+large spread of DE and PSO.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_boxplots.pdf}
+\caption{Final error over 30 runs (log scale) on two instances per benchmark. EIG-MPHBS in dark blue, MPHBS-R and MPHBS
+in light blue, the other algorithms in grey.}
+\label{fig:boxplots}
+\end{figure*}
+
+\subsection{Convergence behaviour}
+Fig.~\ref{fig:convergence} shows median convergence curves of seven algorithms on six instances, and
+Figs.~\ref{fig:conv-C20} and~\ref{fig:conv-FIR} (and Fig.~\ref{fig:conv-C10} in \ref{app:tables}) on all instances of
+CEC2022 $D=20$ and FIR. On BBOB f10, f14 and f19 and on CEC2022 $D=20$ F\res{conv-C20}, EIG-MPHBS separates from MPHBS
+and MPHBS-R early and keeps its lead. On f4 the eigen frame slows it down slightly. On CEC2022 $D=20$ the hybrid family
+converges faster than MPA and DE on most functions, while CMA-ES converges fastest on the unimodal ones. On FIR,
+EIG-MPHBS converges to lower values than MPHBS and MPHBS-R on most cases, but CMA-ES and L-SHADE reach lower values.
 
 \begin{figure*}[t]
 \centering
@@ -499,6 +790,53 @@ CEC2022 and FIR instances are those with the strongest per-instance effect of EI
 the held-out instance where it is significantly worse.}
 \label{fig:convergence}
 \end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_conv_C20.pdf}
+\caption{Median best-so-far error on CEC2022 $D=20$, F1--F12 (30 runs, log scale).}
+\label{fig:conv-C20}
+\end{figure*}
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_conv_FIR.pdf}
+\caption{Median best-so-far objective value on the eight FIR filter-design problems (30 runs, log scale).}
+\label{fig:conv-FIR}
+\end{figure*}
+
+\subsection{Engineering application: FIR filter design}
+\label{sec:fir}
+The FIR problems are the application part of the benchmark. On them EIG-MPHBS is significantly better than MPHBS on
+five of eight cases and worse on none (Table~\ref{tab:wtl}), and the median $A$ against MPHBS is
+\res{S1-H2-FIR-medA}, the largest of the four benchmarks. Fig.~\ref{fig:fir} shows the magnitude responses of the
+median-quality filters of EIG-MPHBS, MPHBS and L-SHADE on the four harder cases. All three meet the pass-band
+specification closely; the differences lie in the stop-band attenuation, where EIG-MPHBS typically attains a few
+decibels more attenuation than MPHBS near the transition band, and L-SHADE more than both away from it. In practical
+terms, all three produce usable filters, and the objective differences of Table~\ref{tab:med-FIR} correspond to a few
+decibels of stop-band attenuation.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/fig_fir.pdf}
+\caption{Magnitude response of the median-quality filter (15th of 30 runs by objective value) of three algorithms on
+the four harder FIR cases. Shaded: pass band (blue) and stop band (orange). Objective values $F$ in the panel titles in
+the order EIG-MPHBS / MPHBS / L-SHADE.}
+\label{fig:fir}
+\end{figure*}
+
+\subsection{Ablation and sensitivity to the frame probability (RQ4)}
+\label{sec:ablation}
+Table~\ref{tab:ablation} reports the pilot study that preceded the main experiments: four variants of the hybrid on 28
+instances, 10 seed-paired runs each. Removing the exchange altogether (``no exchange'') is clearly harmful on FIR and
+CEC2022 $D=20$, which confirms that the exchange is the important component of the hybrid. Among the frame
+probabilities, $q=0.5$ has the best mean rank on CEC2022 $D=20$ and FIR and ties with $q=1$ on the eight BBOB pilot
+instances. Always using the eigen frame ($q=1$) loses some of the benefit on FIR, which has partly separable structure,
+and $q=0$ (the axis frame) is the weakest of the exchange variants on CEC2022 $D=20$. With 10 runs few per-instance
+differences are significant, so this table supports the choice of $q=0.5$ but does not show that it is optimal; an
+adaptive choice is a natural extension.
+
+\input{generated/tab_ablation.tex}
 
 \subsection{Comparison with EA4eig}
 EA4eig~\citep{bujok2022ea4eig} combines eigen crossover with four strong algorithms and was among the best entries of
@@ -511,7 +849,7 @@ an HBA--MPA hybrid does not close the gap to a cooperative model of state-of-the
 
 \input{generated/tab_ea4eig.tex}
 
-\subsection{Computational cost}
+\subsection{Computational cost (RQ4)}
 \label{sec:cost}
 EIG-MPHBS and MPHBS-R used identical evaluation counts on every one of their paired runs, as
 Proposition~\ref{prop:cost} states. Table~\ref{tab:cost} reports the run times. The eigen frame adds
@@ -528,10 +866,12 @@ become negligible.
 
 \paragraph{What the eigen frame achieves} The exchange step of HBA--MPA hybrids is where the two populations combine
 their information, and it was written for separable problems. Moving it into the eigen frame of the pooled populations
-makes it invariant to rotations at no extra evaluation cost, and the results show that this matters: EIG-MPHBS is never
-significantly worse than MPHBS on any of 56 instances and is better on \res{win-MPHBS}, with the largest gains on
-ill-conditioned rotated functions, on CEC2022 at $D=20$ and on the FIR application. The change is local, a few lines in
-the mediator, and should transfer to other hybrids that assemble solutions coordinate by coordinate.
+makes it invariant to rotations at no extra evaluation cost. The mechanism analysis shows why this matters: on coupled
+problems the axis-frame exchange stops producing acceptable candidates early in the run, and the eigen frame restores
+it. The results follow: EIG-MPHBS is never significantly worse than MPHBS on any of 56 instances and is better on
+\res{win-MPHBS}, with the largest gains on ill-conditioned rotated functions, on CEC2022 at $D=20$ and on the FIR
+application. The change is local, a few lines in the mediator, and should transfer to other hybrids that assemble
+solutions coordinate by coordinate.
 
 \paragraph{What it does not achieve} The frame helps unimodal or moderately multimodal problems with coupled variables,
 where the population covariance reflects the basin; it does not help highly multimodal rotated functions such as f15,
@@ -559,11 +899,13 @@ $2N$ points should be checked.
 We identified the coordinate dependence of the dimension-wise exchange in the HBA--MPA hybrid MPHBS as a structural
 weakness on rotated problems and proposed EIG-MPHBS, which performs the exchange in the eigenvector frame of the pooled
 populations in half of the iterations. The exchange becomes provably rotation invariant at no extra evaluation cost and
-a few percent of extra run time. In \res{runs-total} runs on CEC2022, BBOB and FIR filter design, EIG-MPHBS improved on
-MPHBS on \res{win-MPHBS} instances and was never worse, passed a test fixed in advance on 28 held-out instances
-(narrowly), and outperformed its parent algorithms and four classical metaheuristics. It ranked third of eleven,
-behind L-SHADE and CMA-ES, and remained behind EA4eig at the CEC2022 budgets. Future work includes an adaptive choice of
-the frame probability, rotation-invariant versions of the Phase-1 moves, and tests at higher dimension.
+a few percent of extra run time, and on coupled problems it restores the acceptance of exchanged candidates that the
+axis frame loses. In \res{runs-total} runs on CEC2022, BBOB and FIR filter design, EIG-MPHBS improved on MPHBS on
+\res{win-MPHBS} instances and was never worse, passed a test fixed in advance on 28 held-out instances (narrowly), and
+outperformed its parent algorithms and four classical metaheuristics. It ranked third of eleven, behind L-SHADE and
+CMA-ES, and remained behind EA4eig at the CEC2022 budgets. Future work includes an adaptive choice of the frame
+probability, rotation-invariant versions of the Phase-1 moves, and tests at higher dimension and on further
+applications.
 
 \section*{Data and code availability}
 Code, the design document (\path{experiments/ESWA_EIGEN_CAMPAIGN.md}), all \res{runs-total} raw runs, the analyses and
@@ -584,12 +926,24 @@ This research did not receive any specific grant from funding agencies in the pu
 sectors.
 
 \appendix
-\section{Median errors per instance}
+\section{Detailed results}
 \label{app:tables}
+
+\begin{figure*}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_conv_C10.pdf}
+\caption{Median best-so-far error on CEC2022 $D=10$, F1--F12 (30 runs, log scale).}
+\label{fig:conv-C10}
+\end{figure*}
+
 \input{generated/tab_med_C10.tex}
 \input{generated/tab_med_C20.tex}
 \input{generated/tab_med_B20.tex}
 \input{generated/tab_med_FIR.tex}
+\input{generated/tab_ms_C10.tex}
+\input{generated/tab_ms_C20.tex}
+\input{generated/tab_ms_B20.tex}
+\input{generated/tab_ms_FIR.tex}
 
 \FloatBarrier
 \bibliographystyle{elsarticle-harv}

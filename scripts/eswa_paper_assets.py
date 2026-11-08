@@ -18,6 +18,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import matplotlib.ticker  # noqa: E402,F401
+import matplotlib.colors  # noqa: E402,F401
+import matplotlib.patches  # noqa: E402,F401
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 from scipy.stats import wilcoxon  # noqa: E402
@@ -438,6 +440,293 @@ def fig_convergence():
     plt.close(fig)
 
 
+def _clean(ax, grid="y"):
+    ax.tick_params(labelsize=7)
+    ax.yaxis.set_minor_formatter(matplotlib.ticker.NullFormatter())
+    ax.grid(axis=grid, color="#e6e5e0", lw=0.5)
+    ax.set_axisbelow(True)
+    for s in ("top", "right"):
+        ax.spines[s].set_visible(False)
+
+
+def _save(fig, name):
+    fig.savefig(FIG / f"{name}.pdf")
+    fig.savefig(FIG / f"{name}.png", dpi=200)
+    plt.close(fig)
+
+
+def fig_ranks():
+    S = json.loads((AN / "secondary_summary.json").read_text())["S3x_11arms"]
+    order = sorted(ORDER, key=lambda a: S["all"]["mean_rank"][a])
+    y = np.arange(len(order))[::-1]
+    fig, ax = plt.subplots(figsize=(6.6, 3.9))
+    marks = ["o", "s", "^", "D"]
+    cols = ["#2a78d6", "#eb6834", "#1baf7a", "#eda100"]
+    for f, c, m in zip(BENCHES, cols, marks):
+        ax.scatter([S[f]["mean_rank"][a] for a in order], y, s=30, marker=m, color=c, label=BSHORT[f], zorder=3,
+                   edgecolors="white", linewidths=0.6)
+    ax.scatter([S["all"]["mean_rank"][a] for a in order], y, s=260, marker="|", color="#0b0b0b", label="all 56",
+               zorder=4, linewidths=2)
+    ax.set_yticks(y)
+    ax.set_yticklabels([LABEL[a] for a in order], fontsize=8)
+    ax.set_xlabel("mean Friedman rank (1 = best)", fontsize=8)
+    ax.set_xlim(0.5, 11.5)
+    _clean(ax, "x")
+    ax.legend(fontsize=7, frameon=False, ncol=5, loc="upper center", bbox_to_anchor=(0.5, 1.12))
+    fig.tight_layout()
+    _save(fig, "fig_ranks")
+
+
+def fig_wtl_map():
+    P = pd.read_csv(AN / "S3x_eig50_pairwise.csv")
+    comps = [a for a in ORDER if a != "EIG50"]
+    cols, ticks, labels, seps = [], [], [], []
+    for f in BENCHES:
+        insts = sorted(P[P.bench == f].instance.unique())
+        start = len(cols)
+        cols += [(f, i) for i in insts]
+        seps.append(len(cols) - 0.5)
+        ticks.append((start + len(cols) - 1) / 2)
+        labels.append(BLABEL[f].replace("$", "").replace("{=}", "="))
+    M = np.zeros((len(comps), len(cols)))
+    val = {"+": 1, "=": 0, "-": -1}
+    for r in P.itertuples():
+        M[comps.index(r.comparator), cols.index((r.bench, r.instance))] = val[r.result]
+    fig, ax = plt.subplots(figsize=(7.4, 3.0))
+    cmap = matplotlib.colors.ListedColormap(["#eb6834", "#e6e5e0", "#2a78d6"])
+    ax.imshow(M, cmap=cmap, vmin=-1.5, vmax=1.5, aspect="auto", interpolation="nearest")
+    ax.set_xticks(np.arange(len(cols)) - 0.5, minor=True)
+    ax.set_yticks(np.arange(len(comps)) - 0.5, minor=True)
+    ax.grid(which="minor", color="white", lw=1)
+    ax.tick_params(which="minor", length=0)
+    for s in seps[:-1]:
+        ax.axvline(s, color="#0b0b0b", lw=1.2)
+    ax.set_yticks(np.arange(len(comps)))
+    ax.set_yticklabels([f"vs {LABEL[c]}" for c in comps], fontsize=7)
+    ax.set_xticks(ticks)
+    ax.set_xticklabels(labels, fontsize=7)
+    for s in ax.spines.values():
+        s.set_visible(False)
+    h = [matplotlib.patches.Patch(color=c, label=l) for c, l in
+         (("#2a78d6", "EIG-MPHBS significantly better"), ("#e6e5e0", "no significant difference"),
+          ("#eb6834", "EIG-MPHBS significantly worse"))]
+    ax.legend(handles=h, fontsize=7, frameon=False, ncol=3, loc="upper center", bbox_to_anchor=(0.5, 1.13))
+    fig.tight_layout()
+    _save(fig, "fig_wtl_map")
+
+
+def fig_boxplots(D):
+    S1 = pd.read_csv(AN / "S1_all_instances.csv")
+    pick = []
+    for f in BENCHES:
+        g = S1[(S1.hyp == "H2") & (S1.bench == f)].sort_values(["A"], ascending=False)
+        pick += [(f, int(i)) for i in g.instance.iloc[:2]]
+    res("box-list", ", ".join(f"{BSHORT[f]} {FNAME[f]}{i}" for f, i in pick))
+    fig, axes = plt.subplots(2, 4, figsize=(7.4, 5.0))
+    for ax, (f, i) in zip(axes.flat, pick):
+        d = D[f]
+        data = [d[(d.method == a) & (d.instance == i)].err.to_numpy() for a in ORDER]
+        bp = ax.boxplot(data, widths=0.6, patch_artist=True, showfliers=True,
+                        flierprops=dict(marker="o", markersize=2, markerfacecolor="#8a8984", markeredgewidth=0),
+                        medianprops=dict(color="#0b0b0b", lw=1))
+        for k, b in enumerate(bp["boxes"]):
+            b.set_facecolor("#2a78d6" if ORDER[k] == "EIG50" else ("#9ec5f4" if ORDER[k] in ("RND", "MPHBS")
+                                                                     else "#e6e5e0"))
+            b.set_edgecolor("#52514e")
+            b.set_linewidth(0.6)
+        ax.set_yscale("log")
+        ax.set_xticks(range(1, len(ORDER) + 1))
+        ax.set_xticklabels([LABEL[a] for a in ORDER], rotation=90, fontsize=6)
+        ax.set_title(f"{BSHORT[f]} {FNAME[f]}{i}", fontsize=8)
+        _clean(ax)
+    axes[0, 0].set_ylabel("final error", fontsize=8)
+    axes[1, 0].set_ylabel("final error / objective", fontsize=8)
+    fig.tight_layout()
+    _save(fig, "fig_boxplots")
+
+
+def fig_conv_grid(folder, name, ncol=4):
+    insts = list(range(1, 13)) if folder.startswith("CEC") else list(range(1, 9))
+    nrow = int(np.ceil(len(insts) / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(7.4, 1.75 * nrow + 0.5))
+    for ax, i in zip(axes.flat, insts):
+        for a, (col, ls, mk) in STYLE.items():
+            cp, m = curves(folder, a, i)
+            ax.plot(cp, m, color=col, ls=ls, lw=1.4 if a == "EIG50" else 0.9, label=LABEL[a],
+                    zorder=3 if a == "EIG50" else 2)
+        ax.set_yscale("log")
+        ax.set_title(f"{FNAME[folder]}{i}", fontsize=8)
+        ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda v, _: f"{v / 1000:.0f}k" if v else "0"))
+        _clean(ax, "both")
+        ax.tick_params(labelsize=6)
+    h, lab = axes.flat[0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=7, fontsize=7, frameon=False)
+    fig.tight_layout(rect=(0, 0.04, 1, 1))
+    _save(fig, name)
+
+
+def _traces(folder, arm, inst, key):
+    d = RAW / folder / "eswa_eigen" / BENCHES[folder] / arm / f"inst{inst:02d}"
+    T, fe = [], None
+    for r in range(1, 31):
+        z = np.load(d / f"run{r:02d}.npz")
+        T.append(z[f"iter_{key}"])
+        fe = z["iter_fe"]
+    n = min(len(t) for t in T)
+    return fe[:n], np.median(np.vstack([t[:n] for t in T]), axis=0)
+
+
+def fig_mechanism():
+    pick = [("BBOB-D20", 2), ("BBOB-D20", 10), ("BBOB-D20", 11), ("BBOB-D20", 14)]
+    arms = ["EIG50", "RND", "MPHBS"]
+    fig, axes = plt.subplots(2, 4, figsize=(7.4, 3.9))
+    acc = {}
+    for j, (f, i) in enumerate(pick):
+        for a in arms:
+            col, ls, _ = STYLE[a]
+            fe, y = _traces(f, a, i, "mediator_accept_rate")
+            k = 25
+            ys = np.convolve(y, np.ones(k) / k, mode="same")
+            axes[0, j].plot(fe, ys, color=col, ls=ls, lw=1.2, label=LABEL[a])
+            acc[(f, i, a)] = float(np.mean(y[fe <= 50000]))   # first quarter of the budget
+            fe, y = _traces(f, a, i, "diversity")
+            axes[1, j].plot(fe, np.maximum(y, 1e-12), color=col, ls=ls, lw=1.2)
+        axes[0, j].set_title(f"{BSHORT[f]} {FNAME[f]}{i}", fontsize=8)
+        axes[1, j].set_yscale("log")
+        for ax in axes[:, j]:
+            ax.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(
+                lambda v, _: f"{v / 1000:.0f}k" if v else "0"))
+            _clean(ax, "both")
+        axes[1, j].set_xlabel("evaluations", fontsize=7)
+    axes[0, 0].set_ylabel("exchange acceptance rate", fontsize=7)
+    axes[1, 0].set_ylabel("population diversity", fontsize=7)
+    h, lab = axes[0, 0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=3, fontsize=7, frameon=False)
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
+    _save(fig, "fig_mechanism")
+    for (f, i, a), v in acc.items():
+        res(f"acc-{BSHORT[f]}-{i}-{a}", f"{100 * v:.1f}")
+
+
+def fig_fir(D):
+    sys.path.insert(0, str(ROOT))
+    from lakaie.benchmarks.fir import FIRProblem
+    cases = [2, 4, 6, 8]
+    arms = ["EIG50", "MPHBS", "L-SHADE"]
+    fig, axes = plt.subplots(2, 2, figsize=(7.2, 4.6))
+    d = D["FIR"]
+    for ax, c in zip(axes.flat, cases):
+        prob = FIRProblem(c)
+        w = prob.w
+        for idx, colr in ((prob.P, "#cde2fb"), (prob.S, "#fbe0d4")):
+            segs = np.split(idx, np.where(np.diff(idx) > 1)[0] + 1)
+            for s in segs:
+                ax.axvspan(w[s[0]], w[s[-1]], color=colr, lw=0, zorder=0)
+        Fs = []
+        for a in arms:
+            g = d[(d.method == a) & (d.instance == c)].sort_values("err")
+            row = g.iloc[len(g) // 2]
+            x = np.asarray(json.loads(Path(row.path).read_text())["global_best"])
+            H = np.abs(np.fft.rfft(x, n=prob.n_fft))
+            col, ls, _ = STYLE[a]
+            ax.plot(w, 20 * np.log10(np.maximum(H, 1e-6)), color=col, ls=ls, lw=1.1, label=LABEL[a])
+            Fs.append(f"{row.err:.2e}")
+        ax.set_ylim(-90, 10)
+        ax.set_xlim(0, 1)
+        ax.set_title(f"Case {c}: {prob.case['name'].replace('_', ' ')}  (F = {' / '.join(Fs)})", fontsize=7.5)
+        _clean(ax, "both")
+    for ax in axes[1]:
+        ax.set_xlabel(r"normalised frequency $\omega/\pi$", fontsize=8)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("$|H(\\omega)|$ (dB)", fontsize=8)
+    h, lab = axes[0, 0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=3, fontsize=7, frameon=False)
+    fig.tight_layout(rect=(0, 0.05, 1, 1))
+    _save(fig, "fig_fir")
+
+
+def ablation():
+    """Pilot (10 runs, exploratory): no exchange (SKEL), axis frame (q = 0), q = 0.5, q = 1."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from eswa_eigen_analysis import paired_p, vd_a
+    from lakaie.analysis.stats import load_campaign
+    src = {"BBOB-D20": ("run1", "BBOB-D20", "B20$^\\ast$ (8)"), "CEC2022": ("run2", "CEC2022", "C20 (12)"),
+           "FIR": ("run2", "FIR", "FIR (8)")}
+    arms = ["SKEL", "RND", "EIG50", "EIG"]
+    lab = {"SKEL": "no exchange", "RND": "$q=0$", "EIG50": "$q=0.5$", "EIG": "$q=1$"}
+    lines = []
+    for key, (run, bench, name) in src.items():
+        d = load_campaign(ROOT / "results" / "eswa_pilot" / run, "eswa_pilot", bench)
+        d = d[(d.status == "ok") & d.method.isin(arms)].copy()
+        d["err"] = np.maximum(pd.to_numeric(d.best_fitness), FLOOR)
+        M = d.groupby(["instance", "method"]).err.median().unstack()[arms]
+        rk = M.rank(axis=1).mean()
+        cells = [f"{rk[a]:.2f}" for a in arms]
+        for comp in ("RND", "EIG"):
+            ps, As = [], []
+            for i in sorted(d.instance.unique()):
+                x = d[(d.method == "EIG50") & (d.instance == i)].sort_values("run_id").err.to_numpy()
+                y = d[(d.method == comp) & (d.instance == i)].sort_values("run_id").err.to_numpy()
+                ps.append(paired_p(x, y))
+                As.append(vd_a(x, y))
+            ph = holm(np.array(ps))
+            w = int(((ph < 0.05) & (np.array(As) > 0.5)).sum())
+            l = int(((ph < 0.05) & (np.array(As) < 0.5)).sum())
+            cells.append(f"{np.median(As):.2f} ({w}/{len(As) - w - l}/{l})")
+        lines.append(f"{name} & " + " & ".join(cells) + " \\\\")
+        res(f"abl-{key}-runs", int(d.groupby(["method", "instance"]).size().min()))
+    write("tab_ablation.tex", r"""\begin{table*}[t]
+\centering
+\caption{Ablation and sensitivity to the eigen-frame probability $q$ in the pilot study (10 seed-paired runs per
+instance; exploratory, and these instances are excluded from the confirmatory test). ``No exchange'' removes Phase 2;
+$q=0$ is MPHBS-R; $q=0.5$ is EIG-MPHBS; $q=1$ always uses the eigen frame. Left: mean rank of the median final error
+(1 = best). Right: median Vargha--Delaney $A$ of $q=0.5$ against $q=0$ and $q=1$, with the number of instances where it
+is significantly better / not different / worse (paired Wilcoxon, Holm within benchmark). $^\ast$BBOB f1, f3, f8, f10,
+f12, f15, f16, f21.}
+\label{tab:ablation}
+\small
+\begin{tabular}{lcccccc}
+\toprule
+ & \multicolumn{4}{c}{Mean rank} & \multicolumn{2}{c}{$q=0.5$ against} \\
+\cmidrule(lr){2-5}\cmidrule(lr){6-7}
+Benchmark & """ + " & ".join(lab[a] for a in arms) + r""" & $q=0$ & $q=1$ \\
+\midrule
+""" + "\n".join(lines) + r"""
+\bottomrule
+\end{tabular}
+\end{table*}
+""")
+
+
+def meanstd_tables(D):
+    for f, d in D.items():
+        g = d.groupby(["instance", "method"]).err.agg(["mean", "std"])
+        rows = []
+        for i in sorted(d.instance.unique()):
+            means = {a: g.loc[(i, a), "mean"] for a in ORDER}
+            best = min(means.values())
+            cells = []
+            for a in ORDER:
+                s = f"{num(means[a])} ({num(g.loc[(i, a), 'std'])})"
+                cells.append(f"\\textbf{{{s}}}" if means[a] == best else s)
+            rows.append(f"{FNAME[f]}{i} & " + " & ".join(cells) + " \\\\")
+        write(f"tab_ms_{BSHORT[f]}.tex", r"""\begin{table*}[p]
+\centering
+\caption{Mean (standard deviation) of the final error over 30 runs on """ + BLABEL[f] + r""" (FIR: objective
+value); values at or below $10^{-8}$ shown as 0; lowest mean in bold.}
+\label{tab:ms-""" + BSHORT[f] + r"""}
+\resizebox{\textwidth}{!}{%
+\begin{tabular}{l""" + "r" * len(ORDER) + r"""}
+\toprule
+ & """ + " & ".join(LABEL[a] for a in ORDER) + r""" \\
+\midrule
+""" + "\n".join(rows) + r"""
+\bottomrule
+\end{tabular}}
+\end{table*}
+""")
+
+
 def main():
     GEN.mkdir(parents=True, exist_ok=True)
     FIG.mkdir(parents=True, exist_ok=True)
@@ -453,6 +742,16 @@ def main():
     ea4eig()
     cost(D)
     fig_convergence()
+    fig_ranks()
+    fig_wtl_map()
+    fig_boxplots(D)
+    fig_conv_grid("CEC2022-D10", "fig_conv_C10")
+    fig_conv_grid("CEC2022-D20", "fig_conv_C20")
+    fig_conv_grid("FIR", "fig_conv_FIR")
+    fig_mechanism()
+    fig_fir(D)
+    ablation()
+    meanstd_tables(D)
     write("results.tex", "\\providecommand\\res[1]{\\csname res@#1\\endcsname}\n" + "".join(
         f"\\expandafter\\def\\csname res@{k}\\endcsname{{{v}}}\n" for k, v in sorted(R.items())))
     print(f"{len(R)} numbers, runs = {n}")
