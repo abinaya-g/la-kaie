@@ -18,8 +18,7 @@ Arm names in the paper: EIG50 = EIG-MPHBS, RND = MPHBS-R.
 
 ## Open items (red PENDING marks in the PDF)
 
-1. Generative-AI declaration (Elsevier requires one if AI tools were used): author's decision.
-2. Data availability: campaign commit and release tag.
-3. References marked `VERIFY` in `refs.bib` (EA4eig pages/DOI, QLRUN, A+): check in Scopus.
-4. Status of the companion Path A paper (`g2026deconstruction`): update when it has a decision or a preprint.
-5. Highlights (`highlights.txt`) are within 85 characters each; check before submission.
+1. Data availability: campaign commit and release tag.
+2. References marked `VERIFY` in `refs.bib` (EA4eig pages/DOI, QLRUN, A+): check in Scopus.
+3. Status of the companion Path A paper (`g2026deconstruction`): update when it has a decision or a preprint.
+4. Highlights (`highlights.txt`) are within 85 characters each; check before submission.
