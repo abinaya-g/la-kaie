@@ -12,3 +12,12 @@ paper/*.blg
 paper/*.bbl
 paper/*.spl
 paper/build.log
+paper_eswa/*.aux
+paper_eswa/*.log
+paper_eswa/*.fls
+paper_eswa/*.fdb_latexmk
+paper_eswa/*.out
+paper_eswa/*.blg
+paper_eswa/*.bbl
+paper_eswa/*.spl
+paper_eswa/build.log
