@@ -1,5 +1,5 @@
-- Coordinate-wise exchange makes HBA-MPA hybrids weak on rotated problems.
-- EIG-MPHBS exchanges solutions in the eigenframe of both populations.
-- The exchange is provably rotation invariant and costs no extra evaluations.
-- Never worse than MPHBS on 56 instances; beats HBA, MPA, PSO, DE, GWO, WOA.
-- L-SHADE, CMA-ES and EA4eig remain stronger; tests fixed before the runs.
+- Coordinate-wise exchange weakens hybrid optimisers on rotated problems.
+- EIG-MPHBS exchanges solutions in the eigen frame of both populations.
+- The exchange is provably rotation invariant and needs no extra evaluations.
+- Never worse than the original hybrid on 56 instances; 14x lower error on f10.
+- Outperforms HBA, MPA, PSO, DE, GWO and WOA in 260 of 336 comparisons.
