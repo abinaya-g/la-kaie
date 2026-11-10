@@ -104,7 +104,8 @@ We ask four research questions:
   mismatch explain?
 \item[RQ3] Which components of MPHBS do carry its performance: the exchange step, its amount, the population memory, or
   the restructured main loop?
-\item[RQ4] What general requirements follow for ablation controls of learned components?
+\item[RQ4] Why does the learned component not help: is there anything for it to learn, and can its update rule learn it?
+\item[RQ5] What general requirements follow for ablation controls of learned components?
 \end{description}
 
 Our contributions are:
@@ -119,12 +120,18 @@ Our contributions are:
 \item The finding that learning brings no benefit at equal budget, that the exchange step and the memory handling carry
   the performance, and a post hoc diagnostic that links the memory effect to population diversity
   (Section~\ref{sec:results}).
-\item A definition of budget- and state-matched controls and a protocol (Algorithm~\ref{alg:protocol}) for constructing
-  and verifying them (Section~\ref{sec:discussion}).
+\item An explanation of this finding from the update rule itself: the table credits each reward to the provenance of
+  the current vector rather than to the choices tried, and its learning rate imposes a noise floor on every entry
+  (Section~\ref{sec:theory}, Propositions~\ref{prop:credit} and~\ref{prop:noise}), checked against logged rewards and
+  table values.
+\item A decomposition of any learned-versus-control contrast into a learning, a budget and a state term
+  (Proposition~\ref{prop:identify}), the resulting definition of budget- and state-matched controls, and a protocol
+  (Algorithm~\ref{alg:protocol}) for constructing and verifying them (Section~\ref{sec:discussion}).
 \end{enumerate}
 
 Section~\ref{sec:related} surveys the literature. Section~\ref{sec:mphbs} formalises MPHBS and its published evidence,
-and Section~\ref{sec:control} analyses the published control. Section~\ref{sec:design} presents the study design,
+Section~\ref{sec:control} analyses the published control, and Section~\ref{sec:theory} the learned component itself.
+Section~\ref{sec:design} presents the study design,
 Section~\ref{sec:results} the results and Section~\ref{sec:discussion} their interpretation. Section~\ref{sec:conclusion}
 concludes.
 
@@ -461,6 +468,110 @@ remove Phase~2 (SKEL), or refresh the MPA memory after Phase~2 at no cost (RND-S
 \end{figure}
 
 %% =====================================================================
+\section{Why the table cannot learn: credit assignment and a noise floor}
+\label{sec:theory}
+
+The analysis so far concerns the control. This section asks what the learned component itself can achieve, and derives
+two properties of the MPHBS value table from its update rule~\eqref{eq:sarsa}. They predict that the table carries
+little usable information about which source and rank to choose, which Section~\ref{sec:results} then confirms for
+performance and Section~\ref{sec:theorycheck} checks directly.
+
+Write $\sigma_d=(n_d,c_d)$ for the provenance of coordinate $d$ of the current vector $v$ (the rank and source it was
+copied from) and $a_d=(n'_d,c'_d)$ for the provenance chosen for the evaluated candidate $v'$. In the terms of SARSA,
+$\sigma$ is the state and $a$ the action, but both index the same table $Q_{d,\cdot,\cdot}$.
+
+\begin{proposition}[Credit assignment]
+\label{prop:credit}
+In episode $e$, the update~\eqref{eq:sarsa} changes only the entries $Q_{d,\sigma_d}$, $d\in A_e$. Consequently,
+(i) the choices $a_d$ of a rejected candidate receive no update, and (ii) an entry $Q_{d,n,c}$ is updated only in
+episodes in which coordinate $d$ of the current vector was copied from rank $n$ of source $c$, with the reward of a
+candidate whose coordinate $d$ was, in general, chosen differently.
+\end{proposition}
+\begin{proof}
+The update writes $Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,a_d}-Q_{d,\sigma_d})$ if $v'$ is accepted
+and $Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,\sigma_d}-Q_{d,\sigma_d})$ otherwise (lines 415--425 of
+\texttt{MPHBS\_main.m}; the port is identical). No other entry is written. Only an accepted candidate becomes the current
+vector, so $\sigma_d$ changes to $a_d$ only after acceptance.
+\end{proof}
+
+The table therefore does not estimate how good it is to \emph{choose} a provenance, which is how the greedy policies use
+it, but how often a search step \emph{from} a vector with that provenance fails. With acceptance rates of a few percent,
+almost all updates are of the second kind in Proposition~\ref{prop:credit}. The next result bounds how precisely even
+that quantity can be estimated.
+
+\begin{proposition}[Noise floor of a table entry]
+\label{prop:noise}
+Consider one entry and the sequence of its updates with rejected candidates. If the rewards of these updates are
+independent with mean $\mu$ and variance $s^2$, the entry follows
+$Q_k=(1-\beta)Q_{k-1}+\alpha r_k$ with $\beta=\alpha(1-\gamma)$, and
+\begin{equation}
+\lim_{k\to\infty}\E[Q_k]=\frac{\mu}{1-\gamma},\qquad
+\lim_{k\to\infty}\mathrm{Var}[Q_k]=\frac{\alpha^2 s^2}{\beta(2-\beta)}.
+\label{eq:noise}
+\end{equation}
+The entry is an exponentially weighted average with an effective memory of $1/\beta$ updates.
+\end{proposition}
+\begin{proof}
+For a rejected candidate the target is $r_k+\gamma Q_{k-1}$, so $Q_k=Q_{k-1}+\alpha(r_k+\gamma Q_{k-1}-Q_{k-1})
+=(1-\beta)Q_{k-1}+\alpha r_k$. Unrolling, $Q_k=(1-\beta)^kQ_0+\alpha\sum_{j=0}^{k-1}(1-\beta)^j r_{k-j}$; the mean
+converges to $\alpha\mu/\beta=\mu/(1-\gamma)$ and, by independence, the variance to
+$\alpha^2 s^2\sum_j(1-\beta)^{2j}=\alpha^2s^2/(1-(1-\beta)^2)$.
+\end{proof}
+
+With MPHBS's $\alpha=0.1$ and $\gamma=0.3$, $\beta=\res{th-beta}$: an entry averages over about \res{th-memory}
+updates, and its noise standard deviation is $\res{th-sdfactor}\,s$, independent of how long the run is.
+
+\begin{corollary}[Ordering two choices]
+\label{cor:order}
+Let two entries satisfy Proposition~\ref{prop:noise} with mean rewards differing by $\Delta$, a common variance $s^2$
+and independent noise. In the stationary regime and under a normal approximation, the entry with the higher mean reward
+also has the higher value with probability $\Phi(z)$, where
+\begin{equation}
+z=\frac{\Delta/(1-\gamma)}{\sqrt{2}\,\alpha s/\sqrt{\beta(2-\beta)}} .
+\label{eq:order}
+\end{equation}
+\end{corollary}
+
+Equation~\eqref{eq:order} gives the regime in which a greedy choice is informative: $z$ must be well above 1, i.e.\ the
+true differences between choices must be large relative to the reward noise, and they must persist for many more than
+$1/\beta$ updates. Neither condition is a property of SARSA in general; both follow from the parameters and the reward
+structure of this mediator, and both can be measured.
+
+\subsection{Post hoc check}
+\label{sec:theorycheck}
+\input{generated/theory.tex}
+The two propositions concern the update rule and hold by construction; whether their consequences matter depends on the
+rewards that MPHBS actually produces. We logged every mediator episode of \res{th-runs} additional MPHBS runs (5 per
+instance, seeds disjoint from the study, budgets as in Section~\ref{sec:design}): the reward, the provenance of the
+evaluated candidate's coordinates, and the table. For each cell $(d,n,c)$ we computed the mean reward of the
+candidates whose coordinate $d$ was copied from rank $n$ of source $c$, which is the quantity a useful table would have
+to rank. Table~\ref{tab:theory} summarises the result. This check was not part of the pre-registration.
+
+\input{generated/tab_theory.tex}
+
+Rewards are sparse: \res{th-CEC-p_plus} of CEC2022 episodes and \res{th-FIR-p_plus} of FIR episodes improve on the
+current vector, so almost every update is the rejected-candidate case of Propositions~\ref{prop:credit}
+and~\ref{prop:noise}. Between cells, the mean reward of the choices tried differs by $\hat\tau=\res{th-CEC-tau_action}$
+on CEC2022 and $\res{th-FIR-tau_action}$ on FIR, which the noise floor turns into a separation of only
+$z=\res{th-CEC-z_typical}$ and $\res{th-FIR-z_typical}$ (Corollary~\ref{cor:order}).
+
+The two benchmarks then differ in an instructive way. On FIR there is nothing stable to learn: the cells' mean rewards
+in the two halves of a run are uncorrelated ($\rho_{1/2}=\res{th-FIR-split_half_rho}$), and so is the table with later
+outcomes ($\rho_Q=\res{th-FIR-Qmid_validity_rho}$, positive in \res{th-FIR-valid-pos} of \res{th-FIR-n} runs). On
+CEC2022 there is a stable signal ($\rho_{1/2}=\res{th-CEC-split_half_rho}$), but the table ranks the cells against it:
+$\rho_Q=\res{th-CEC-Qmid_validity_rho}$, negative in all but \res{th-CEC-valid-pos} of \res{th-CEC-n} runs. This is what
+Proposition~\ref{prop:credit} leads one to expect. A provenance that produces good vectors keeps them current for many
+episodes, and in each of these episodes the table charges it with the failure of whatever candidate is tried next; the
+better the provenance, the more penalties it collects.
+
+These measurements explain the outcome of H1 rather than merely restating it. The learned policies cannot help on FIR,
+where no signal persists, and on CEC2022 they are steered away from the better choices. That SARSA's paired win probability
+against the random mediator is slightly below one half on both benchmarks ($\bar W=\res{H1-CEC2022-wbar}$ and
+\res{H1-FIR-wbar}, Section~\ref{sec:results}) is consistent with this, although on FIR a further cause is plausible: greedy and second-best policies concentrate the choices on a few cells even when the table carries
+no information. The noise floor of Proposition~\ref{prop:noise} would limit any table with $\alpha=0.1$; the credit
+assignment of Proposition~\ref{prop:credit} is specific to this mediator and would remain if $\alpha$ were changed.
+
+%% =====================================================================
 \section{Study design}
 \label{sec:design}
 
@@ -789,6 +900,34 @@ of iterations under the same budget, and \emph{state-matched} if, given the same
 updates of every state variable outside the learned component (populations, memories, archives, parameters). A control
 that is budget- and state-matched isolates the effect of learning.
 \end{definition}
+
+The next result makes ``isolates'' precise. Write $Y(\pi,T,U)$ for the final error of a run that takes the component's
+decisions with policy $\pi$, runs $T$ iterations and updates its state with rule $U$, and let a control use the
+reference policy $\pi_0$, $T_0$ iterations and rule $U_0$.
+
+\begin{proposition}[What a control measures]
+\label{prop:identify}
+The contrast between the learned variant and a control decomposes exactly as
+\begin{equation}
+\E Y(\pi,T,U)-\E Y(\pi_0,T_0,U_0)
+=\underbrace{\E Y(\pi,T,U)-\E Y(\pi_0,T,U)}_{\text{learning}}
++\underbrace{\E Y(\pi_0,T,U)-\E Y(\pi_0,T_0,U)}_{\text{budget}}
++\underbrace{\E Y(\pi_0,T_0,U)-\E Y(\pi_0,T_0,U_0)}_{\text{state}} .
+\label{eq:identify}
+\end{equation}
+The budget term vanishes if $T_0=T$ and the state term if $U_0=U$; a budget- and state-matched control therefore
+measures the learning term alone. For any other control the contrast is biased by the sum of the two other terms, whose
+sign is not known in advance.
+\end{proposition}
+\begin{proof}
+Add and subtract $\E Y(\pi_0,T,U)$ and $\E Y(\pi_0,T_0,U)$. Under Definition~\ref{def:matched} the budget is the same
+for both variants, so equal FEs per iteration give $T_0=T$ by Proposition~\ref{prop:iter}, and equal state updates give
+$U_0=U$.
+\end{proof}
+
+In our study the three terms are estimated separately. H1 measures the learning term, because RND-FAIR is matched to
+SARSA. H2a measures the budget term of the published mirror, and H2b, on CEC2022, its state term
+(Proposition~\ref{prop:memory}). The published comparison of SARSA with the mirror is the sum of all three.
 
 Algorithm~\ref{alg:protocol} turns the definition into a procedure; the unit tests of our study implement its
 budget and inertness checks (Section~\ref{sec:validation}).

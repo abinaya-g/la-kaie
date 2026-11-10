@@ -1,0 +1,33 @@
+{
+  "design": "post hoc diagnostic, scripts/pathA_learning_signal.py",
+  "runs_per_instance": 5,
+  "alpha": 0.1,
+  "by_bench": {
+    "CEC2022": {
+      "p_plus": 0.028780686612965095,
+      "p_zero": 0.006245205216724205,
+      "p_minus": 0.9631161296509398,
+      "reward_sd": 0.3463466354458054,
+      "Q_sd_pred": 0.09422872148644684,
+      "tau_action": 0.045021416584058616,
+      "z_typical": 0.5816740110393064,
+      "split_half_rho": 0.5654704199944632,
+      "Qmid_validity_rho": -0.38552478315931554,
+      "median_updates_per_updated_cell": 28.5,
+      "n_runs": 60
+    },
+    "FIR": {
+      "p_plus": 0.12493954781767622,
+      "p_zero": 0.20773636803288598,
+      "p_minus": 0.6669084753959618,
+      "reward_sd": 0.7053519267797582,
+      "Q_sd_pred": 0.19190141741353367,
+      "tau_action": 0.029008869184302073,
+      "z_typical": 0.15514574829527233,
+      "split_half_rho": 0.029941758896097313,
+      "Qmid_validity_rho": 0.0030037518382464833,
+      "median_updates_per_updated_cell": 562.5,
+      "n_runs": 40
+    }
+  }
+}
