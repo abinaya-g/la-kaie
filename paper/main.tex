@@ -55,7 +55,7 @@ hybrid metaheuristic}
 
 \begin{abstract}
 MPHBS couples the Honey Badger Algorithm and the Marine Predators Algorithm through a mediator that assembles hybrid
-solutions dimension by dimension under the control of a SARSA-style value table; its authors attribute part of its
+solutions one coordinate at a time, guided by a SARSA-style value table; its authors attribute part of its
 performance to this learning, mainly through a comparison with a ``matched'' random mirror. We show analytically and from
 the published code that this mirror is not matched: it spends $N$ additional evaluations per iteration, so it runs 21\%
 (CEC2022) and 16\% (FIR) fewer iterations at the same budget, and under the CEC2022 configuration it also refreshes a
@@ -139,24 +139,25 @@ the methodology of experimental comparison. Section~\ref{sec:gap} summarises the
 \subsection{The parent algorithms: HBA and MPA}
 The Honey Badger Algorithm~\cite{hashim2022hba} alternates a ``digging'' move, which scales the distance to the best
 agent by a smell-intensity term, and a ``honey'' move towards the best agent, both modulated by a decreasing density
-factor. A recent survey and meta-analysis counts 52 studies proposing improved HBA variants (for example with chaotic maps,
-L\'evy flights or adaptive mechanisms), 20 studies hybridising HBA with other methods and 101 applications of the original
-algorithm~\cite{hassan2024hba}. The Marine Predators Algorithm~\cite{faramarzi2020mpa} switches between Brownian and L\'evy
+factor. HBA has attracted a large literature: a recent survey and meta-analysis identifies 52 improved variants (built
+on, for instance, chaotic maps, L\'evy flights or adaptive mechanisms), 20 hybrids with other methods and 101
+applications of the original algorithm~\cite{hassan2024hba}. The Marine Predators Algorithm~\cite{faramarzi2020mpa} switches between Brownian and L\'evy
 movements in three phases of the run and adds two memory mechanisms, the marine memory and the fish aggregating device
 (FAD) perturbation. A review of 102 MPA studies covers its variants and hybrids and critically discusses its convergence
 behaviour and main limitations~\cite{albetar2023mpa}. Both algorithms are thus
 typical of the recent generation of population-based metaheuristics, and both are frequently hybridised. MPHBS combines
-the two through a learned exchange mechanism. It is not the first HBA--MPA hybrid: Al-Dhaifallah et al.\ combined the
-two algorithms in series, population-division and switching schemes for a power-network planning
-problem~\cite{aldhaifallah2024mpahba}. To our knowledge, however, MPHBS is the first to control their exchange with a
+the two through a learned exchange mechanism. It is not the first HBA--MPA hybrid: for a power-network planning
+problem, Al-Dhaifallah et al.\ ran the two algorithms one after the other, on divided populations, and with switching
+between them~\cite{aldhaifallah2024mpahba}. To our knowledge, however, MPHBS is the first to control their exchange with a
 temporal-difference learner.
 
 \subsection{Hybrid and multi-population metaheuristics}
-Hybridising metaheuristics is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. Talbi's taxonomy
-distinguishes low-level hybrids, which replace a component of one algorithm by another, from high-level hybrids, in which
-self-contained algorithms cooperate, and relay hybrids, which run them in sequence, from teamwork hybrids, which run them in
-parallel~\cite{talbi2002taxonomy}. Parallel and island models have long studied cooperating populations and the design of
-their migration: what is exchanged, between which populations, how often and how much~\cite{alba2002parallel}. Multi-population
+Hybridising metaheuristics is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. Talbi classifies
+hybrids along two axes: whether one algorithm's component is embedded in another (low level) or whole algorithms
+cooperate (high level), and whether the algorithms are executed one after another (relay) or concurrently
+(teamwork)~\cite{talbi2002taxonomy}. Research on parallel and island models has long examined how cooperating
+populations should migrate information, including its content, its direction, its frequency and its
+volume~\cite{alba2002parallel}. Multi-population
 techniques have become widespread in nature-inspired optimisation; Ma et al.\ survey their concepts, design issues and
 applications~\cite{ma2019multipop}. In this vocabulary
 MPHBS is a high-level teamwork hybrid with two heterogeneous populations and a dedicated exchange phase. Its design fixes
@@ -248,11 +249,11 @@ controls bias ablations of learned components.
 \label{sec:mphbs}
 
 \subsection{Notation}
-We minimise $f:\Omega\to\mathbb{R}$ over a box $\Omega=[\ell,u]^D$. MPHBS maintains an HBA population
-$X^H=\{x^H_1,\dots,x^H_N\}$ and an MPA population $X^M$ of $N$ agents each, with fitness values $f^H_i$, $f^M_i$, the
-best agents $p^H$, $p^M$ of each population and the global best $p^\star$ with value $f^\star$. MPA keeps a marine memory
-$(\tilde X^M, \tilde f^M)$. $t=0,\dots,T-1$ is the iteration, $T$ the number of iterations, $\mathrm{clip}$ the projection
-onto $\Omega$, $\odot$ the element-wise product and $U(a,b)$ a uniform random number.
+The problem is to find the minimum of $f:\Omega\to\mathbb{R}$ on the box $\Omega=[\ell,u]^D$. MPHBS keeps two
+populations of $N$ agents, $X^H=\{x^H_1,\dots,x^H_N\}$ for HBA and $X^M$ for MPA, with fitness values $f^H_i$, $f^M_i$;
+$p^H$ and $p^M$ denote the best agent of each population and $p^\star$ (value $f^\star$) the global best. The marine
+memory of MPA is $(\tilde X^M, \tilde f^M)$. Iterations are indexed by $t=0,\dots,T-1$. We write $\mathrm{clip}$ for
+projection onto $\Omega$, $\odot$ for the Hadamard product and $U(a,b)$ for a uniformly distributed random number.
 
 \subsection{Native operators}
 \paragraph{HBA} With the intensity
@@ -266,10 +267,12 @@ p^H_j + F r_7\alpha_t d_{ij} & \text{otherwise},
 \label{eq:hba}
 \end{equation}
 with $\psi_{ij}=\bigl|\cos(2\pi r_4)\bigl(1-\cos(2\pi r_5)\bigr)\bigr|$, $\beta=6$ and
-$r,r_3,\dots,r_7\sim U(0,1)$, as in the authors' code. The proposal replaces $x^H_i$ if it is better.
+$r,r_3,\dots,r_7\sim U(0,1)$, as in the authors' code. Agent $i$ adopts the proposal only when it improves on
+$x^H_i$.
 
-\paragraph{MPA} With the elite $E=p^M$, $P=0.5$, the adaptive factor $\mathrm{CF}_t=(1-t/T)^{2t/T}$, Brownian steps
-$R_B\sim\mathcal N(0,1)^{N\times D}$ and Lévy steps $R_L = 0.05\,\mathrm{L\acute evy}(1.5)$, an agent moves by
+\paragraph{MPA} Let $E=p^M$ be the elite, $P=0.5$, $\mathrm{CF}_t=(1-t/T)^{2t/T}$ the adaptive factor, and let
+$R_B\sim\mathcal N(0,1)^{N\times D}$ and $R_L = 0.05\,\mathrm{L\acute evy}(1.5)$ be the Brownian and L\'evy step
+matrices. The update of an agent is
 \begin{equation}
 x^M_i \leftarrow \begin{cases}
 x^M_i + P R\odot R_B\odot(E - R_B\odot x^M_i) & \text{(I)},\\
@@ -279,28 +282,32 @@ E + P\,\mathrm{CF}_t\,R_L\odot(R_L\odot E - x^M_i) & \text{(III)},
 \end{cases}
 \label{eq:mpa}
 \end{equation}
-where phases (I), (II), (III) are $t<T/3$, $T/3\le t<2T/3$ and $t\ge 2T/3$, and $R\sim U(0,1)^D$. After evaluation, \emph{memory saving} keeps the old position where it was better:
+with $R\sim U(0,1)^D$; phase (I) covers the first third of the run ($t<T/3$), phase (II) the middle third and phase
+(III) the last third ($t\ge 2T/3$). Once the new positions are evaluated, \emph{memory saving} restores any agent whose
+previous position had the lower fitness:
 \begin{equation}
 x^M_i \leftarrow \begin{cases}\tilde x^M_i & \tilde f^M_i < f(x^M_i),\\ x^M_i & \text{otherwise},\end{cases}
 \qquad (\tilde X^M,\tilde f^M)\leftarrow (X^M, f^M).
 \label{eq:memory}
 \end{equation}
 
-\paragraph{FAD stage} With probability $\mathrm{FADs}=0.2$ the population is perturbed by
-$\mathrm{CF}_t\,(\ell + R\odot(u-\ell))\odot B$ with a Bernoulli$(0.2)$ mask $B$, otherwise by
-$\bigl(\mathrm{FADs}(1-r)+r\bigr)(x^M_{\pi_1(i)}-x^M_{\pi_2(i)})$ for random permutations $\pi_1,\pi_2$. In MPHBS every
-candidate is evaluated and accepted greedily, and the memory is set to the result.
+\paragraph{FAD stage} The fish-aggregating-device step adds, with probability $\mathrm{FADs}=0.2$, the perturbation
+$\mathrm{CF}_t\,(\ell + R\odot(u-\ell))\odot B$, where $B$ is a Bernoulli$(0.2)$ mask; in the remaining cases it adds
+$\bigl(\mathrm{FADs}(1-r)+r\bigr)(x^M_{\pi_1(i)}-x^M_{\pi_2(i)})$, with $\pi_1,\pi_2$ two random permutations. MPHBS
+evaluates each perturbed agent, keeps it only if it improves, and then overwrites the memory with the outcome.
 
 \subsection{The SARSA mediator (Phase 2)}
-\paragraph{Ranked subsets} From each population, MPHBS draws a subset of
-$N_\mathrm{sub}=\min\bigl(N,\max(5,\mathrm{round}(\rho N))\bigr)$ agents, half of them the best and the rest at random,
-and sorts it by fitness. The subsets form a tensor $R\in\mathbb{R}^{N_\mathrm{sub}\times D\times 2}$, where
-$R_{n,d,c}$ is coordinate $d$ of the rank-$n$ agent of source $c\in\{H,M\}$.
+\paragraph{Ranked subsets} Each population contributes
+$N_\mathrm{sub}=\min\bigl(N,\max(5,\mathrm{round}(\rho N))\bigr)$ agents to the mediator: its best $N_\mathrm{sub}/2$
+agents plus randomly chosen ones, ordered by fitness. Stacking the two ordered subsets gives
+$R\in\mathbb{R}^{N_\mathrm{sub}\times D\times 2}$, in which entry $R_{n,d,c}$ holds dimension $d$ of the agent ranked
+$n$ in source $c\in\{H,M\}$.
 
-\paragraph{Episodes} The mediator starts from $v=p^\star$, evaluates it once and runs $E=N_\mathrm{sub}N_i$ episodes. The
-dimensions are split into five blocks (one if $D<10$) of size $b=\lceil D/5\rceil$, visited along a random permutation.
-In episode $e$ with active block $A_e$, $K$ candidates are assembled: candidate $k$ copies $v$ and sets
-$v'_d = R_{n_d,d,c_d}$ for $d\in A_e$, where $(c_d,n_d)$ is chosen by policy $\pi_k$ over the value table
+\paragraph{Episodes} Starting from the vector $v=p^\star$, which costs one evaluation, the mediator performs
+$E=N_\mathrm{sub}N_i$ episodes. A random permutation of the dimensions is cut into blocks of $b=\lceil D/5\rceil$
+dimensions (a single block when $D<10$), and each episode works on the next block $A_e$. It builds $K$ candidates, each a
+copy of $v$ whose dimensions $d\in A_e$ are replaced by $v'_d = R_{n_d,d,c_d}$; candidate $k$ chooses the pair
+$(c_d,n_d)$ with policy $\pi_k$ over the value table
 $Q\in\mathbb{R}^{D\times N_\mathrm{sub}\times 2}$: greedy, $\varepsilon$-greedy with
 $\varepsilon_e=\varepsilon_\mathrm{end}+(\varepsilon_0-\varepsilon_\mathrm{end})e^{-(e-1)/\max(1,E/4)}$, uniform,
 second-best, or $\varepsilon$-greedy at a look-ahead episode. A proxy score that costs no evaluation selects one
@@ -312,8 +319,8 @@ s(v') = -w_\mathrm{rank}\,\overline{(n_d+1)}_{d\in A_e} + w_\mathrm{nov}\,\overl
 \end{equation}
 with $w_\mathrm{rank}=1$, $w_\mathrm{nov}=0.3$, and only that candidate is evaluated.
 
-\paragraph{Reward, acceptance and update} The reward is $r_e=\mathrm{sign}(f(v)-f(v'))$. An improving candidate is
-accepted; a worse one with probability
+\paragraph{Reward, acceptance and update} The reward is $r_e=\mathrm{sign}(f(v)-f(v'))$. Candidates that improve on
+$v$ are always kept, and the others are kept with probability
 \begin{equation}
 p_e = \min\Bigl(0.25,\ 0.2\,(1-g_t)^2\bigl(0.35+0.65(1-\lambda_e)\bigr)\exp\bigl(-4\max(0,\Delta_e)\bigr)\Bigr),
 \label{eq:accept}
@@ -325,9 +332,9 @@ Q_{d,n_d,c_d} \leftarrow Q_{d,n_d,c_d} + \alpha\bigl(r_e + \gamma\,Q_{d,n'_d,c'_
 \label{eq:sarsa}
 \end{equation}
 with $\alpha=0.1$, $\gamma=0.3$, where $(n'_d,c'_d)$ is the choice in $v'$ if it was accepted and $(n_d,c_d)$ otherwise.
-An accepted candidate replaces the worst member of each subset that it improves. A new global best is recorded and
-copied into a random subset row. At the end of Phase 2 the subsets are written back into the populations, and the bests
-are synchronised. Algorithm~\ref{alg:iteration} summarises one iteration and Algorithm~\ref{alg:mediator} the
+In each subset, a kept candidate takes the place of the worst member if it is better than that member. Whenever a
+candidate improves on $p^\star$, it becomes the new global best and overwrites a randomly chosen subset row. Phase 2 ends
+by returning the subsets to their populations and updating the best agents. Algorithm~\ref{alg:iteration} summarises one iteration and Algorithm~\ref{alg:mediator} the
 mediator.
 
 \begin{algorithm}[t]
@@ -337,7 +344,7 @@ mediator.
 \begin{algorithmic}[1]
 \Require populations $X^H,X^M$, memory $(\tilde X^M,\tilde f^M)$, iteration $t$, configuration (FAD placement, $K$, $N_i$)
 \If{\textsc{RND-AUTH}} evaluate $X^M$ and apply memory saving \eqref{eq:memory} \Comment{$+N$ FEs}\EndIf
-\State HBA move \eqref{eq:hba} and MPA move \eqref{eq:mpa}; evaluate; greedy replacement; memory saving
+\State move $X^H$ by \eqref{eq:hba} and $X^M$ by \eqref{eq:mpa}; evaluate; keep improvements; memory saving
 \eqref{eq:memory} \Comment{$2N$}
 \If{FAD before Phase 2 (CEC2022)} FAD stage with greedy acceptance; set memory \Comment{$N$}\EndIf
 \State $p^\star\gets$ best of $p^H,p^M$
@@ -493,15 +500,15 @@ memory update in SARSA (H8) are exploratory.
 
 \subsection{Benchmarks, runs and seeds}
 CEC2022~\cite{kumar2021cec2022} F1--F12 at $D=20$ with $B=200{,}000$ FEs, computed by the official C code; the outcome is
-the final error $f-f^\star$. The FIR problems of~\cite{flores2026mphbs} design a linear filter $h\in[-1,1]^{31}$
-(low-pass, high-pass, band-pass and band-stop, each in an easier and a harder variant) with $B=150{,}000$ FEs and the
-objective
+the final error $f-f^\star$. The eight FIR problems of~\cite{flores2026mphbs} ask for the 31 coefficients
+$h\in[-1,1]^{31}$ of an FIR filter; they cover low-pass, high-pass, band-pass and band-stop designs, with a
+relaxed and a tight specification for each. The budget is $B=150{,}000$ FEs and the objective is
 \begin{equation}
 F(h) = W_p\,\frac{1}{|P|}\sum_{n\in P}\bigl(|H(\omega_n)|-1\bigr)^2 + W_s\,\frac{1}{|S|}\sum_{n\in S}|H(\omega_n)|^2,
 \label{eq:fir}
 \end{equation}
-where $H$ is the 2048-point discrete Fourier transform of $h$, $P$ and $S$ are the pass- and stop-band grid points,
-$W_p=1$ and $W_s\in\{100,120\}$. The H1 pair was run 100 times per instance and every other arm 50 times; F10 was
+in which $H(\omega_n)$ is the frequency response from a 2048-point DFT of $h$, $P$ and $S$ index the frequency grid
+points in the pass band and the stop band, and the weights are $W_p=1$ and $W_s\in\{100,120\}$. The H1 pair was run 100 times per instance and every other arm 50 times; F10 was
 extended to 100 runs for the four H5 arms. Seeds are $92\,000\,000+\text{offset}+1000\cdot\text{instance}+\text{run}$ and
 identical across arms, so all comparisons are seed-paired.
 
@@ -849,9 +856,9 @@ magnitudes.
 \FloatBarrier
 \section*{Data and code availability}
 \label{sec:availability}
-Code, the frozen pre-registration (tag \texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analyses and the
-scripts that generate every number, table and figure in this paper are available at
-\url{https://github.com/abinaya-g/la-kaie} (campaign commit \texttt{\res{commit}}). The BBOB extension's addendum
+The repository \url{https://github.com/abinaya-g/la-kaie} holds the code, the frozen pre-registration (tag
+\texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analysis, and the scripts from which each number, table
+and figure of this paper is produced (campaign commit \texttt{\res{commit}}). The BBOB extension's addendum
 (\path{experiments/MPHBS_BBOB_ADDENDUM.md}, tag \texttt{pathA-bbob-run-1}), its \res{bbob-runs} raw runs and analysis are in
 the same repository (campaign commit \texttt{\res{bbob-commit}}).
 
