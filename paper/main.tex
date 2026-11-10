@@ -1,4 +1,8 @@
-\documentclass[5p,times]{elsarticle}
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{times}
+\usepackage[authoryear,round]{natbib}
+\usepackage{url}
 
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb,amsthm}
@@ -37,45 +41,36 @@
 \input{generated/results.tex}
 \input{generated/bbob.tex}
 
-\journal{Swarm and Evolutionary Computation}
+
+\title{Does the learning matter? A pre-registered deconstruction of SARSA-guided information exchange in the MPHBS hybrid metaheuristic}
+\author{Abinaya G\\[2pt]
+{\small Department of Information Technology, Saveetha Engineering College, Saveetha Nagar, Thandalam,}\\
+{\small Chennai 602105, Tamil Nadu, India}\\
+{\small Corresponding author: \url{gabinaya@saveetha.ac.in}; ORCID 0000-0002-1907-0733}}
+\date{}
 
 \begin{document}
-
-\begin{frontmatter}
-
-\title{Does the learning matter? A pre-registered deconstruction of SARSA-guided information exchange in the MPHBS
-hybrid metaheuristic}
-
-\author[1]{Abinaya G\corref{cor1}}
-\ead{gabinaya@saveetha.ac.in}
-\cortext[cor1]{Corresponding author.}
-\affiliation[1]{organization={Department of Information Technology, Saveetha Engineering College},
-                addressline={Saveetha Nagar, Thandalam}, city={Chennai}, postcode={602105}, state={Tamil Nadu},
-                country={India}}
+\maketitle
 
 \begin{abstract}
-MPHBS couples the Honey Badger Algorithm and the Marine Predators Algorithm through a mediator that assembles hybrid
-solutions one coordinate at a time, guided by a SARSA-style value table; its authors attribute part of its
-performance to this learning, mainly through a comparison with a ``matched'' random mirror. We show analytically and from
-the published code that this mirror is not matched: it spends $N$ additional evaluations per iteration, so it runs 21\%
-(CEC2022) and 16\% (FIR) fewer iterations at the same budget, and under the CEC2022 configuration it also refreshes a
-population memory that MPHBS leaves unchanged. We then report a pre-registered study with budget-identical controls on
-CEC2022 ($D=20$) and eight FIR filter-design problems ($D=31$): \res{runs-total} seed-paired runs analysed with a frozen
-script. A random mediator at the same budget performs at least as well as SARSA on both benchmarks (mean paired win
-probability of SARSA \res{H1-CEC2022-wbar}, 95\% CI \res{H1-CEC2022-ci}, and \res{H1-FIR-wbar}, \res{H1-FIR-ci}). What
-matters is the exchange step itself, which halves the median error on FIR, and the handling of the population memory:
-refreshing it, as the published mirror does, is strongly harmful on CEC2022 and, in a post hoc diagnostic, collapses population diversity. The
-restructured main loop is consistently but negligibly better than the original backbone. An exploratory extension to the
-24 BBOB functions replicates the absence of a learning effect. We formalise budget- and state-matched ablation controls and
-give a protocol for constructing them.
+Learned controllers in metaheuristics are usually justified by an ablation against a random control. We show that
+such a contrast mixes a learning, a budget and a state effect, and that only a budget- and state-matched control
+measures learning alone. We apply this to MPHBS, a Honey Badger--Marine Predators hybrid whose information exchange is
+guided by a SARSA value table. Its published random control spends $N$ extra evaluations per iteration, so it runs 21\%
+(CEC2022) and 16\% (FIR) fewer iterations at the same budget, and in one configuration it changes a population memory.
+A pre-registered study with matched controls, \res{runs-total} seed-paired runs on CEC2022 ($D=20$) and eight FIR
+filter-design problems, finds that a random mediator performs at least as well as SARSA (mean paired win probability of
+SARSA \res{H1-CEC2022-wbar} and \res{H1-FIR-wbar}). The exchange step and the memory handling carry the performance. We
+then explain the failure of learning from the update rule: it credits each reward to the provenance of the current
+vector rather than to the choices tried, and its learning rate limits each entry to an average over about
+\res{th-memory} updates. Logged runs confirm both effects: on FIR no stable signal exists, and on CEC2022 the table ranks
+a stable signal in reverse (Spearman \res{th-CEC-Qmid_validity_rho}). An extension to the 24 BBOB functions replicates
+the absence of a learning effect. A protocol for constructing and verifying matched controls is given.
 \end{abstract}
 
-\begin{keyword}
-Hybrid metaheuristics \sep Reinforcement learning \sep SARSA \sep Ablation \sep Experimental methodology \sep
-Pre-registration
-\end{keyword}
+\medskip
+\noindent\textbf{Keywords:} Hybrid metaheuristics $\cdot$ Reinforcement learning $\cdot$ SARSA $\cdot$ Ablation $\cdot$ Experimental methodology $\cdot$ Pre-registration
 
-\end{frontmatter}
 
 %% =====================================================================
 \section{Introduction}
@@ -83,19 +78,19 @@ Pre-registration
 
 Learned control components have become a common ingredient of population-based metaheuristics. Reinforcement learning
 selects variation operators, adapts parameters during the run, or decides how solution information flows between
-cooperating populations~\cite{karafotias2015parameter,drugan2019rl}. A learned controller is usually justified with an
+cooperating populations~\citep{karafotias2015parameter,drugan2019rl}. A learned controller is usually justified with an
 ablation that replaces it by a random or fixed one: if the learned variant performs better, the difference is attributed
 to learning. This inference is valid only if the two variants differ in nothing but the learning. When the controlled
 variant also changes how many objective function evaluations (FEs) each iteration consumes, how many iterations fit into
 the budget, or how the populations' internal state evolves, the comparison attributes to learning an effect that has a
 different cause.
 
-This paper examines one recent instance of the problem in detail. MPHBS~\cite{flores2026mphbs} hybridises the Honey
-Badger Algorithm (HBA)~\cite{hashim2022hba} and the Marine Predators Algorithm (MPA)~\cite{faramarzi2020mpa}. After the
+This paper examines one recent instance of the problem in detail. MPHBS~\citep{flores2026mphbs} hybridises the Honey
+Badger Algorithm (HBA)~\citep{hashim2022hba} and the Marine Predators Algorithm (MPA)~\citep{faramarzi2020mpa}. After the
 native moves of both populations, a mediator assembles hybrid vectors dimension by dimension from ranked subsets of both
-populations, guided by a SARSA-style value table~\cite{sutton2018rl}. The authors compare SARSA with a ``matched random
-mirror'' and report that SARSA is better on CEC2022~\cite{kumar2021cec2022} but not on their FIR filter-design problems.
-Because their code and per-run results are public~\cite{flores2026code}, the claim can be re-examined precisely.
+populations, guided by a SARSA-style value table~\citep{sutton2018rl}. The authors compare SARSA with a ``matched random
+mirror'' and report that SARSA is better on CEC2022~\citep{kumar2021cec2022} but not on their FIR filter-design problems.
+Because their code and per-run results are public~\citep{flores2026code}, the claim can be re-examined precisely.
 
 We ask four research questions:
 \begin{description}
@@ -115,7 +110,7 @@ Our contributions are:
   differs in its memory dynamics (Section~\ref{sec:control}, Propositions~\ref{prop:iter} and~\ref{prop:memory}). Our port
   of the mirror agrees with the authors' published runs on all \res{V3-CEC2022-n} CEC2022 functions and all
   \res{V3-FIR-n} FIR cases.
-\item A pre-registered study~\cite{nosek2018preregistration} with budget-identical controls that separates the four
+\item A pre-registered study~\citep{nosek2018preregistration} with budget-identical controls that separates the four
   candidate causes, with a mechanical decision rule fixed before any run (Section~\ref{sec:design}).
 \item The finding that learning brings no benefit at equal budget, that the exchange step and the memory handling carry
   the performance, and a post hoc diagnostic that links the memory effect to population diversity
@@ -144,29 +139,29 @@ variants, hybrid and multi-population metaheuristics, learning-based control of 
 the methodology of experimental comparison. Section~\ref{sec:gap} summarises the gap that this paper addresses.
 
 \subsection{The parent algorithms: HBA and MPA}
-The Honey Badger Algorithm~\cite{hashim2022hba} alternates a ``digging'' move, which scales the distance to the best
+The Honey Badger Algorithm~\citep{hashim2022hba} alternates a ``digging'' move, which scales the distance to the best
 agent by a smell-intensity term, and a ``honey'' move towards the best agent, both modulated by a decreasing density
 factor. HBA has attracted a large literature: a recent survey and meta-analysis identifies 52 improved variants (built
 on, for instance, chaotic maps, L\'evy flights or adaptive mechanisms), 20 hybrids with other methods and 101
-applications of the original algorithm~\cite{hassan2024hba}. The Marine Predators Algorithm~\cite{faramarzi2020mpa} switches between Brownian and L\'evy
+applications of the original algorithm~\citep{hassan2024hba}. The Marine Predators Algorithm~\citep{faramarzi2020mpa} switches between Brownian and L\'evy
 movements in three phases of the run and adds two memory mechanisms, the marine memory and the fish aggregating device
 (FAD) perturbation. A review of 102 MPA studies covers its variants and hybrids and critically discusses its convergence
-behaviour and main limitations~\cite{albetar2023mpa}. Both algorithms are thus
+behaviour and main limitations~\citep{albetar2023mpa}. Both algorithms are thus
 typical of the recent generation of population-based metaheuristics, and both are frequently hybridised. MPHBS combines
 the two through a learned exchange mechanism. It is not the first HBA--MPA hybrid: for a power-network planning
 problem, Al-Dhaifallah et al.\ ran the two algorithms one after the other, on divided populations, and with switching
-between them~\cite{aldhaifallah2024mpahba}. To our knowledge, however, MPHBS is the first to control their exchange with a
+between them~\citep{aldhaifallah2024mpahba}. To our knowledge, however, MPHBS is the first to control their exchange with a
 temporal-difference learner.
 
 \subsection{Hybrid and multi-population metaheuristics}
-Hybridising metaheuristics is a long-standing design principle~\cite{talbi2002taxonomy,blum2011hybrid}. Talbi classifies
+Hybridising metaheuristics is a long-standing design principle~\citep{talbi2002taxonomy,blum2011hybrid}. Talbi classifies
 hybrids along two axes: whether one algorithm's component is embedded in another (low level) or whole algorithms
 cooperate (high level), and whether the algorithms are executed one after another (relay) or concurrently
-(teamwork)~\cite{talbi2002taxonomy}. Research on parallel and island models has long examined how cooperating
+(teamwork)~\citep{talbi2002taxonomy}. Research on parallel and island models has long examined how cooperating
 populations should migrate information, including its content, its direction, its frequency and its
-volume~\cite{alba2002parallel}. Multi-population
+volume~\citep{alba2002parallel}. Multi-population
 techniques have become widespread in nature-inspired optimisation; Ma et al.\ survey their concepts, design issues and
-applications~\cite{ma2019multipop}. In this vocabulary
+applications~\citep{ma2019multipop}. In this vocabulary
 MPHBS is a high-level teamwork hybrid with two heterogeneous populations and a dedicated exchange phase. Its design fixes
 when and how much is exchanged (one mediator phase per iteration with a fixed number of episodes) and learns only which
 source and rank provide each dimension of the exchanged vectors. Unlike classical migration, which moves whole
@@ -175,12 +170,12 @@ individuals, the mediator recombines individual coordinates from both population
 \subsection{Learning-based control of metaheuristics}
 Using machine learning inside metaheuristics has become a research area of its own. Talbi classifies the synergies by the
 search component that learning acts on: the target optimisation problem, and the low-level and high-level components of
-the metaheuristic~\cite{talbi2021ml}. Parameter control adapts parameters during the run from feedback~\cite{karafotias2015parameter},
+the metaheuristic~\citep{talbi2021ml}. Parameter control adapts parameters during the run from feedback~\citep{karafotias2015parameter},
 and adaptive operator selection treats the choice of a variation operator as a sequential decision, typically solved with
-credit assignment schemes and multi-armed bandits~\cite{fialho2010bandit}. Reinforcement learning (RL) generalises these
-schemes~\cite{drugan2019rl}. A recent survey of RL-assisted evolutionary algorithms organises the field by the function RL
+credit assignment schemes and multi-armed bandits~\citep{fialho2010bandit}. Reinforcement learning (RL) generalises these
+schemes~\citep{drugan2019rl}. A recent survey of RL-assisted evolutionary algorithms organises the field by the function RL
 performs: generating solutions, learning objective functions, selecting algorithms, operators or sub-populations, and
-adapting parameters~\cite{song2024rlea}.
+adapting parameters~\citep{song2024rlea}.
 
 Table~\ref{tab:rl-survey} lists representative RL-controlled metaheuristics. They differ in the learner (tabular Q-learning,
 SARSA, deep Q-networks), in the decision that is learned (an operator, a parameter, a component of a hyper-heuristic, or
@@ -189,12 +184,12 @@ are made per dimension of an assembled vector, and its value table is indexed by
 object is a recombination pattern rather than an operator or parameter. Across this literature, the usual evidence that
 learning helps is a comparison with the same algorithm without the learner, either with the controlled decision fixed or
 drawn at random. Recent studies make this comparison central. Mohammed et al.\ ablate the Q-learning component of an
-ant colony optimiser and report faster convergence than the baseline without it~\cite{mohammed2026qlaco}; Carrasco et al.\
+ant colony optimiser and report faster convergence than the baseline without it~\citep{mohammed2026qlaco}; Carrasco et al.\
 compare a policy-gradient orchestrator of seven metaheuristics with round-robin, random and untrained controls and find
-that the policy mainly learns which members to avoid~\cite{carrasco2026orchestration}. Hanna et al.\ report that RL-based
+that the policy mainly learns which members to avoid~\citep{carrasco2026orchestration}. Hanna et al.\ report that RL-based
 mutation-operator selection in automated program repair produces more test-passing variants but does not patch more bugs
-than uniform random selection~\cite{hanna2025apr}. Outside metaheuristics, Cheng et al.\ re-assessed a published deep-RL
-macro placer against stronger baselines, including simulated annealing, on new public benchmarks~\cite{cheng2026macro}.
+than uniform random selection~\citep{hanna2025apr}. Outside metaheuristics, Cheng et al.\ re-assessed a published deep-RL
+macro placer against stronger baselines, including simulated annealing, on new public benchmarks~\citep{cheng2026macro}.
 How closely random controls are matched to the learned variant, in evaluation budget per iteration and in state updates,
 is rarely reported, however; it is the question at the centre of this paper.
 
@@ -203,39 +198,40 @@ is rarely reported, however; it is the question at the centre of this paper.
 \caption{Representative reinforcement-learning-controlled metaheuristics (from the cited papers' descriptions).}
 \label{tab:rl-survey}
 \footnotesize
-\begin{tabular}{p{3.2cm}p{2.6cm}p{2.2cm}p{4.6cm}p{3.6cm}}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{p{3.0cm}p{2.4cm}p{2.0cm}p{4.3cm}p{3.2cm}}
 \toprule
 Work & Base algorithm(s) & Learner & Learned decision & Evaluation \\
 \midrule
-DE-DDQN~\cite{sharma2019deddqn} & differential evolution & double deep Q-network & mutation strategy per generation, from 99 state features & CEC2005 \\
-Q-learning hyper-heuristic~\cite{choong2018hh} & selection hyper-heuristic & Q-learning & low-level heuristic selection and move acceptance & HyFlex, six domains \\
-RLI-GWO, RLEx-GWO, RLWOA~\cite{seyyedabbasi2021rl} & grey wolf, whale optimisation & Q-learning & switching between exploration and exploitation & global optimisation benchmarks \\
-QLESCA~\cite{hamad2022qlesca} & sine cosine algorithm & Q-learning, one table per agent & control parameters $r_1$, $r_3$ (exploration--exploitation) & 23 classical, 20 large-scale functions, 3 engineering problems \\
-MPHBS~\cite{flores2026mphbs} & HBA and MPA & SARSA-style TD update & (source, rank) per dimension when assembling hybrid vectors & CEC2022, 8 FIR filter designs \\
+DE-DDQN~\citep{sharma2019deddqn} & differential evolution & double deep Q-network & mutation strategy per generation, from 99 state features & CEC2005 \\
+Q-learning hyper-heuristic~\citep{choong2018hh} & selection hyper-heuristic & Q-learning & low-level heuristic selection and move acceptance & HyFlex, six domains \\
+RLI-GWO, RLEx-GWO, RLWOA~\citep{seyyedabbasi2021rl} & grey wolf, whale optimisation & Q-learning & switching between exploration and exploitation & global optimisation benchmarks \\
+QLESCA~\citep{hamad2022qlesca} & sine cosine algorithm & Q-learning, one table per agent & control parameters $r_1$, $r_3$ (exploration--exploitation) & 23 classical, 20 large-scale functions, 3 engineering problems \\
+MPHBS~\citep{flores2026mphbs} & HBA and MPA & SARSA-style TD update & (source, rank) per dimension when assembling hybrid vectors & CEC2022, 8 FIR filter designs \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
 \subsection{Population diversity and the exploration--exploitation balance}
 Exploration and exploitation, and their measurement through population diversity, are central to understanding how
-population-based algorithms behave~\cite{crepinsek2013exploration}. Loss of diversity leads to premature convergence on
-suboptimal solutions, and many mechanisms have been proposed to maintain it~\cite{squillero2016diversity}. Whether a
-general ``best'' balance exists is itself debated~\cite{morales2020balance}. Memory and replacement rules, such as MPA's
+population-based algorithms behave~\citep{crepinsek2013exploration}. Loss of diversity leads to premature convergence on
+suboptimal solutions, and many mechanisms have been proposed to maintain it~\citep{squillero2016diversity}. Whether a
+general ``best'' balance exists is itself debated~\citep{morales2020balance}. Memory and replacement rules, such as MPA's
 marine memory, are one of the levers that set this balance. Section~\ref{sec:diversity} shows that the way MPHBS updates
 the MPA memory has a much larger effect on diversity, and on performance, than its learned controller.
 
 \subsection{Experimental methodology and critical analyses}
 A line of critical work deconstructs metaheuristics to determine which components actually carry their performance, and
 has shown that several algorithms introduced with new metaphors reduce to known
-mechanisms~\cite{sorensen2015metaphor,camacho2019iwd,camacho2022cuckoo,camacho2023exposing,aranha2022elephant}.
+mechanisms~\citep{sorensen2015metaphor,camacho2019iwd,camacho2022cuckoo,camacho2023exposing,aranha2022elephant}.
 Methodological guidelines for comparing bio-inspired algorithms ask for appropriate benchmarks and reference algorithms,
-principled validation and sound statistics~\cite{latorre2021guidelines,derrac2011tutorial}, attention to tuning
-effort~\cite{eiben2011tuning}, reproducibility~\cite{lopezibanez2021reproducibility} and benchmarking
-practice~\cite{bartzbeielstein2020benchmarking}. Benchmark design itself can bias conclusions: Kudela showed that test
-functions with optima at the centre of the domain reward algorithms with a centre bias~\cite{kudela2022centre}, which is one
-reason to complement a single suite with shifted and rotated problems such as CEC2022 and BBOB~\cite{hansen2021coco}. Our
+principled validation and sound statistics~\citep{latorre2021guidelines,derrac2011tutorial}, attention to tuning
+effort~\citep{eiben2011tuning}, reproducibility~\citep{lopezibanez2021reproducibility} and benchmarking
+practice~\citep{bartzbeielstein2020benchmarking}. Benchmark design itself can bias conclusions: Kudela showed that test
+functions with optima at the centre of the domain reward algorithms with a centre bias~\citep{kudela2022centre}, which is one
+reason to complement a single suite with shifted and rotated problems such as CEC2022 and BBOB~\citep{hansen2021coco}. Our
 study applies these principles to a learned control component and adds two elements that remain rare in the field: a
-frozen pre-registration~\cite{nosek2018preregistration} and unit tests that prove the intended equivalences between variants.
+frozen pre-registration~\citep{nosek2018preregistration} and unit tests that prove the intended equivalences between variants.
 
 \subsection{Research gap}
 \label{sec:gap}
@@ -244,7 +240,7 @@ by comparisons with a random or fixed control, but the conditions under which su
 learning, matching the evaluation cost per iteration and every state update, have not been made explicit. Second, MPHBS's
 claim that learning drives its performance has not been re-examined, although its code and per-run results are public.
 Third, the deconstruction literature has focused on metaphor-based algorithms; learned control components have received
-little such scrutiny; the closest studies compare learned and random controls~\cite{hanna2025apr,carrasco2026orchestration}
+little such scrutiny; the closest studies compare learned and random controls~\citep{hanna2025apr,carrasco2026orchestration}
 but do not examine whether those controls are matched to the learned variant. We searched Scopus on 27~October~2026
 (titles, abstracts and keywords) for studies citing MPHBS (none), for HBA--MPA hybrids (13 records), and for
 RL-controlled metaheuristics combined with ablation, random-control or replication terms (136, 5 and 30 records). No
@@ -387,9 +383,9 @@ line~\ref{line:sarsa}.}
 \subsection{Configurations and published evidence}
 With $N=30$ the final configurations are B-C1 on CEC2022 ($K=7$, $N_i=3$, $\rho=0.25$, so $N_\mathrm{sub}=8$ and
 $E=24$; FAD before Phase 2) and A-C1 on FIR ($K=3$, $N_i=9$, $E=72$; FAD after Phase 2), both selected by the authors
-on the same benchmarks~\cite{flores2026mphbs}. The random mirror is described as identical except that source and rank
+on the same benchmarks~\citep{flores2026mphbs}. The random mirror is described as identical except that source and rank
 are drawn uniformly. Re-analysing the authors' 30 common-seed runs per instance with paired Wilcoxon
-tests~\cite{wilcoxon1945} and Holm correction~\cite{holm1979}, SARSA is significantly better than the mirror on
+tests~\citep{wilcoxon1945} and Holm correction~\citep{holm1979}, SARSA is significantly better than the mirror on
 \res{auth-CEC2022-vsRANDOM-sigS} of \res{auth-CEC2022-n} CEC2022 functions and worse on
 \res{auth-CEC2022-vsRANDOM-sigC}, and not significantly different on any of the \res{auth-FIR-n} FIR cases. On CEC2022
 F10, a bimodal composition function, SARSA escapes the dominant local basin (final error below 50) in
@@ -610,8 +606,8 @@ H1--H4 are confirmatory. The F10 escape rate (H5), the number of episodes (H6), 
 memory update in SARSA (H8) are exploratory.
 
 \subsection{Benchmarks, runs and seeds}
-CEC2022~\cite{kumar2021cec2022} F1--F12 at $D=20$ with $B=200{,}000$ FEs, computed by the official C code; the outcome is
-the final error $f-f^\star$. The eight FIR problems of~\cite{flores2026mphbs} ask for the 31 coefficients
+CEC2022~\citep{kumar2021cec2022} F1--F12 at $D=20$ with $B=200{,}000$ FEs, computed by the official C code; the outcome is
+the final error $f-f^\star$. The eight FIR problems of~\citet{flores2026mphbs} ask for the 31 coefficients
 $h\in[-1,1]^{31}$ of an FIR filter; they cover low-pass, high-pass, band-pass and band-stop designs, with a
 relaxed and a tight specification for each. The budget is $B=150{,}000$ FEs and the objective is
 \begin{equation}
@@ -633,8 +629,8 @@ probability and the median relative difference
 \label{eq:delta}
 \end{align}
 with $\tau=10^{-12}$, and a two-sided Wilcoxon signed-rank test. $p$-values are Holm-adjusted within each (hypothesis,
-benchmark) family of instances~\cite{holm1979,derrac2011tutorial}. The domain-level effect is
-$\bar W=\frac1J\sum_j\hat w_j$, with a 95\% percentile bootstrap interval~\cite{efron1979bootstrap} from 10{,}000
+benchmark) family of instances~\citep{holm1979,derrac2011tutorial}. The domain-level effect is
+$\bar W=\frac1J\sum_j\hat w_j$, with a 95\% percentile bootstrap interval~\citep{efron1979bootstrap} from 10{,}000
 resamples of seed pairs within instances. $\hat\delta_j$ is descriptive and was added after the pre-registration, because
 $\bar W$ measures the consistency of an effect but not its size.
 
@@ -643,19 +639,19 @@ $\bar W$ measures the consistency of an effect but not its size.
 Let $n_A$ and $n_C$ be the numbers of Holm-significant instances with $\hat w_j>0.5$ and $\hat w_j<0.5$, and $[L,U]$ the
 interval for $\bar W$. The verdict is the first that applies: \emph{mixed} if $n_A>0$ and $n_C>0$; \emph{anchor superior}
 if $n_A>0$ and $L>0.5$; \emph{comparator superior} if $n_C>0$ and $U<0.5$; \emph{practically equivalent} if $n_A=n_C=0$
-and $[L,U]\subseteq[0.44,0.56]$, the negligible-effect band of Vargha and Delaney~\cite{vargha2000}; otherwise
+and $[L,U]\subseteq[0.44,0.56]$, the negligible-effect band of Vargha and Delaney~\citep{vargha2000}; otherwise
 \emph{inconclusive}.
 \end{definition}
 
 With 100 pairs per instance, $\mathrm{SE}(\bar W)\le\sqrt{0.25/(100J)}$, which gives a probability of about 0.97 (CEC2022,
 $J=12$) and 0.85 (FIR, $J=8$) of an equivalence verdict when there is no effect. Escape rates are reported with Wilson
-intervals~\cite{wilson1927} and compared by an exact McNemar test~\cite{mcnemar1947}.
+intervals~\citep{wilson1927} and compared by an exact McNemar test~\citep{mcnemar1947}.
 
 \subsection{Execution and validation}
 \label{sec:validation}
 The campaign ran once on GitHub-hosted Linux runners in the pinned software environment (Python 3.11, NumPy 2.4.6),
 after the full test suite had passed there. The port's MPHBS reproduces the authors' FE totals exactly and their
-published run distributions~\cite{flores2026code}; the one known exception, a lower escape rate on F10, is examined in
+published run distributions~\citep{flores2026code}; the one known exception, a lower escape rate on F10, is examined in
 H5. Unit tests establish that (i) the variant code with default settings is bit-identical to the validated MPHBS port;
 (ii) every arm's FE total matches Table~\ref{tab:arms}; (iii) at a fixed number of iterations and on test problems,
 RND-AUTH produces trajectories bit-identical to RND-FAIR under the FIR configuration and to RND-SYNC under the CEC2022
@@ -823,7 +819,7 @@ log-diversity. Post hoc, exploratory.}
 \subsection{Exploratory extension: BBOB}
 \label{sec:bbob}
 To check whether H1 and H3 hold beyond the two benchmark sets of the original study, we ran SARSA, RND-FAIR and SKEL on
-the 24 noiseless functions of the COCO BBOB suite~\cite{hansen2021coco} at $D=10$ and $D=20$, with $10{,}000\,D$ FEs, the
+the 24 noiseless functions of the COCO BBOB suite~\citep{hansen2021coco} at $D=10$ and $D=20$, with $10{,}000\,D$ FEs, the
 B-C1 configuration and 30 seed-paired runs per function, run $r$ using BBOB instance $((r-1)\bmod 15)+1$. The design and
 analysis were fixed in an addendum to the pre-registration and committed before the campaign (Section~\ref{sec:availability});
 the extension is exploratory. Errors below $10^{-8}$ were set to $10^{-8}$, so runs that solve a function tie. All
@@ -843,7 +839,7 @@ functions such as f10 (rotated ellipsoid), f12 (bent cigar), f13 (sharp ridge), 
 $D=10$, \res{bbob-B3-D20-siga}/\res{bbob-B3-D20-sigc} at $D=20$). This pattern matches the mediator's mechanism: it assembles
 candidates coordinate by coordinate from different agents, which preserves good building blocks when variables are
 independent and destroys them when they interact, a limitation the MPHBS authors themselves anticipate for strongly
-coupled variables~\cite{flores2026mphbs}. On the FIR problems, whose objective \eqref{eq:fir} couples coefficients only
+coupled variables~\citep{flores2026mphbs}. On the FIR problems, whose objective \eqref{eq:fir} couples coefficients only
 weakly through a quadratic stop-band term, the mediator was uniformly beneficial (H3).
 
 \input{generated/tab_bbob.tex}
@@ -868,22 +864,24 @@ populations at all (decisive on FIR), the amount of exchange per iteration, and 
 mediator. The SARSA controller and the restructured loop are not among them.
 
 \paragraph{Why learning does not help}
-The value table has $D\cdot N_\mathrm{sub}\cdot 2$ entries (320 on CEC2022, 496 on FIR) and receives
-$b=\lceil D/5\rceil$ updates per episode, i.e.\ about $T E b/(2DN_\mathrm{sub})\approx 520$ updates per entry on CEC2022
-and 930 on FIR. Data are therefore not scarce. The reward, however, is the sign of the change of a whole assembled vector,
-shared equally by all $b$ dimensions of the block, and the evaluated candidate was itself chosen by the proxy score from
-$K$ candidates generated by different policies. The credit that reaches an individual (dimension, rank, source) entry is
-thus heavily diluted, and the most informative choices, taking coordinates from good agents, are already enforced by the
-ranked subsets and the rank term of the proxy score \eqref{eq:proxy}. Under these conditions a learned policy has little
-to add over uniform choices, consistent with the difficulties of credit assignment reported for adaptive operator
-selection~\cite{fialho2010bandit}.
+Section~\ref{sec:theory} gives the main reasons. The table has $D\cdot N_\mathrm{sub}\cdot 2$ entries (320 on
+CEC2022, 496 on FIR) and receives $b=\lceil D/5\rceil$ updates per episode, which would be about 520 updates per entry
+on CEC2022 and 930 on FIR if they were spread evenly. They are not: by Proposition~\ref{prop:credit} only the
+provenance of the current vector is updated, so on CEC2022 the median updated entry receives
+\res{th-CEC-median_updates_per_updated_cell} updates (Table~\ref{tab:theory}), and every entry averages over only about
+\res{th-memory} of them (Proposition~\ref{prop:noise}). Two further features dilute the credit. The reward is the sign of
+the change of a whole assembled vector, shared by all $b$ dimensions of the block, and the evaluated candidate was itself
+chosen by the proxy score from $K$ candidates generated by different policies. Finally, the most informative choices,
+taking coordinates from good agents, are already enforced by the ranked subsets and the rank term of the proxy score
+\eqref{eq:proxy}. Under these conditions a learned policy has little to add over uniform choices, consistent with the
+difficulties of credit assignment reported for adaptive operator selection~\citep{fialho2010bandit}.
 
 \paragraph{Why the stale memory helps}
 With the stale memory, an MPA agent whose move fails returns to its pre-mediator position, which is typically far from
 the incumbent, whereas with the refreshed memory it returns to the post-mediator population, whose subset rows the
 mediator has filled with vectors close to the incumbent. The diagnostic in Section~\ref{sec:diversity} shows the expected
 consequence: the refreshed memory makes the population collapse, which on most functions is premature convergence in the
-sense of the exploration--exploitation literature~\cite{crepinsek2013exploration}. On F1 (Zakharov), a unimodal function,
+sense of the exploration--exploitation literature~\citep{crepinsek2013exploration}. On F1 (Zakharov), a unimodal function,
 faster collapse is an advantage, which fits the two exceptions only partly (F11 is a composition function). The design of
 MPHBS benefits from this property, apparently by accident: it is neither described nor motivated in the original paper.
 
@@ -909,10 +907,12 @@ reference policy $\pi_0$, $T_0$ iterations and rule $U_0$.
 \label{prop:identify}
 The contrast between the learned variant and a control decomposes exactly as
 \begin{equation}
+\begin{aligned}
 \E Y(\pi,T,U)-\E Y(\pi_0,T_0,U_0)
-=\underbrace{\E Y(\pi,T,U)-\E Y(\pi_0,T,U)}_{\text{learning}}
-+\underbrace{\E Y(\pi_0,T,U)-\E Y(\pi_0,T_0,U)}_{\text{budget}}
-+\underbrace{\E Y(\pi_0,T_0,U)-\E Y(\pi_0,T_0,U_0)}_{\text{state}} .
+&=\underbrace{\E Y(\pi,T,U)-\E Y(\pi_0,T,U)}_{\text{learning}}
++\underbrace{\E Y(\pi_0,T,U)-\E Y(\pi_0,T_0,U)}_{\text{budget}}\\
+&\quad+\underbrace{\E Y(\pi_0,T_0,U)-\E Y(\pi_0,T_0,U_0)}_{\text{state}} .
+\end{aligned}
 \label{eq:identify}
 \end{equation}
 The budget term vanishes if $T_0=T$ and the state term if $U_0=U$; a budget- and state-matched control therefore
@@ -968,7 +968,7 @@ exchange) can be valuable even when the learning is not, and the two should be e
 \paragraph{Scope} We study one hybrid and the authors' final configurations. The confirmatory analysis covers two benchmark
 sets at one dimension each; the exploratory BBOB extension (Section~\ref{sec:bbob}) adds 24 functions at two dimensions and
 replicates H1, but it uses only three arms and 30 runs per function. The configurations were selected with SARSA on
-CEC2022 and FIR, which favours SARSA and makes H1 conservative. No free lunch results~\cite{wolpert1997nfl} caution against
+CEC2022 and FIR, which favours SARSA and makes H1 conservative. No free lunch results~\citep{wolpert1997nfl} caution against
 generalising beyond the problems studied.
 
 \paragraph{Port and platform} Our results use a Python port; agreement with the authors' MATLAB runs is distributional
@@ -988,34 +988,29 @@ evidence for it rests on a control that is handicapped by its evaluation budget 
 memory update that collapses population diversity. MPHBS's performance comes from exchanging information between its
 populations, from the amount of exchange, and from its handling of the population memory; its restructured loop is
 consistently but negligibly better than the original backbone. On the BBOB suite the learned controller again brings no
-benefit, and the exchange step helps only on separable functions. More generally, ablations of learned components in
-metaheuristics should be budget- and state-matched, verified mechanically, fixed in advance and reported with effect
-magnitudes.
+benefit, and the exchange step helps only on separable functions. The update rule explains why learning cannot help:
+it credits each reward to the provenance of the current vector rather than to the choices tried, and its learning rate
+limits every entry to an average over about \res{th-memory} updates. Logged runs confirm both effects: on FIR no stable
+signal exists, and on CEC2022 the table ranks a stable signal in the wrong order. More generally, a contrast between a
+learned component and a control mixes learning, budget and state effects unless the control is matched; ablations of
+learned components in metaheuristics should therefore be budget- and state-matched, verified mechanically, fixed in
+advance and reported with effect magnitudes.
 
 \FloatBarrier
-\section*{Data and code availability}
+\section*{Statements and Declarations}
 \label{sec:availability}
-The repository \url{https://github.com/abinaya-g/la-kaie} holds the code, the frozen pre-registration (tag
+
+\paragraph{Competing interests} The author has no competing interests to declare that are relevant to the content of this article.
+
+\paragraph{Funding} No funding was received for conducting this study.
+
+\paragraph{Data availability} The repository \url{https://github.com/abinaya-g/la-kaie} holds the code, the frozen pre-registration (tag
 \texttt{pathA-prereg-frozen}), all \res{runs-total} raw runs, the analysis, and the scripts from which each number, table
 and figure of this paper is produced (campaign commit \texttt{\res{commit}}). The BBOB extension's addendum
 (\path{experiments/MPHBS_BBOB_ADDENDUM.md}, tag \texttt{pathA-bbob-run-1}), its \res{bbob-runs} raw runs and analysis are in
 the same repository (campaign commit \texttt{\res{bbob-commit}}).
 
-\section*{CRediT authorship contribution statement}
-\textbf{Abinaya G:} Conceptualization, Methodology, Software, Validation, Formal analysis, Investigation, Data curation,
-Writing -- original draft, Writing -- review \& editing, Visualization.
-
-\section*{Declaration of competing interest}
-The author declares that there are no known competing financial interests or personal relationships that could have
-appeared to influence the work reported in this paper.
-
-\section*{Acknowledgements}
-We thank the authors of MPHBS for publishing their code and per-run results, without which this study would not have been
-possible.
-
-\section*{Funding}
-This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit
-sectors.
+\paragraph{Author contributions} Abinaya G conceived and designed the study, wrote the software, ran the experiments and the analysis, and wrote the manuscript.
 
 \appendix
 \section{Detailed results}
@@ -1060,7 +1055,7 @@ are included in the repository under \path{third_party/}. The campaign was run a
 full test suite first and refuses to compute verdicts if any run is missing or has an unexpected FE total.
 
 \FloatBarrier
-\bibliographystyle{elsarticle-num}
+\bibliographystyle{plainnat}
 \bibliography{refs}
 
 \end{document}

@@ -1,12 +1,13 @@
-"""Build the Swarm and Evolutionary Computation submission package for the Path A paper (paper/).
+"""Build the Journal of Heuristics submission package for the Path A paper (paper/).
 
-The journal uses single-anonymized review, so the manuscript keeps the author details.
+The manuscript keeps the author details (the journal's guidelines ask for author information on the title page and do
+not require an anonymized manuscript). Acknowledgements are on the title page only.
 
 Output: paper/submission/package/
   manuscript.pdf, manuscript_source.zip   manuscript and its LaTeX source (main.tex, refs.bib, main.bbl,
                                           generated/, figures/)
-  title_page.pdf, cover_letter.pdf, orcid_info.pdf, highlights.txt, highlights.docx
-  Figure_1.pdf ... Figure_9.pdf, Figure_A10.pdf, Figure_A11.pdf   artwork as separate files
+  title_page.pdf, cover_letter.pdf
+  Fig1.pdf ... Fig11.pdf                  artwork as separate files, named as the journal asks
 
 Usage:  python scripts/pathA_make_submission.py     (rebuilds paper/main.pdf first)
 """
@@ -22,10 +23,8 @@ ROOT = Path(__file__).resolve().parents[1]
 PAPER = ROOT / "paper"
 SUB = PAPER / "submission"
 PKG = SUB / "package"
-FIGURES = [("fig1_standalone", "Figure_1"), ("fig_forest", "Figure_2"), ("fig_instances", "Figure_3"),
-           ("fig_convergence_cec", "Figure_4"), ("fig_final_fir", "Figure_5"), ("fig_f10", "Figure_6"),
-           ("fig_dose", "Figure_7"), ("fig_diversity", "Figure_8"), ("fig_bbob", "Figure_9"),
-           ("fig_convergence_fir", "Figure_A10"), ("fig_final_cec", "Figure_A11")]
+FIGURES = ["fig1_standalone", "fig_forest", "fig_instances", "fig_convergence_cec", "fig_final_fir", "fig_f10",
+           "fig_dose", "fig_diversity", "fig_bbob", "fig_convergence_fir", "fig_final_cec"]
 
 
 def run(cmd, cwd):
@@ -50,6 +49,9 @@ def latex(tex, cwd, bib=False, outdir=None):
 
 
 def main():
+    if PKG.exists():
+        for f in PKG.iterdir():
+            f.unlink()
     PKG.mkdir(parents=True, exist_ok=True)
     shutil.copy(latex("main.tex", PAPER, bib=True), PKG / "manuscript.pdf")
 
@@ -62,14 +64,11 @@ def main():
                     z.write(f, f"{sub}/{f.name}")
 
     latex("figures/fig1_standalone.tex", PAPER, outdir="figures")
-    for src, dst in FIGURES:
-        shutil.copy(PAPER / "figures" / f"{src}.pdf", PKG / f"{dst}.pdf")
+    for i, src in enumerate(FIGURES, 1):
+        shutil.copy(PAPER / "figures" / f"{src}.pdf", PKG / f"Fig{i}.pdf")
 
-    for tex in ("title_page.tex", "cover_letter.tex", "orcid_info.tex"):
+    for tex in ("title_page.tex", "cover_letter.tex"):
         shutil.copy(latex(tex, SUB), PKG / tex.replace(".tex", ".pdf"))
-    shutil.copy(SUB / "highlights.txt", PKG / "highlights.txt")
-    run([sys.executable, str(ROOT / "scripts" / "eswa_highlights_docx.py"), str(PKG / "highlights.docx"),
-         str(SUB / "highlights.txt")], ROOT)
 
     print("package:", sorted(p.name for p in PKG.iterdir()))
     return 0

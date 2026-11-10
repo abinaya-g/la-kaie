@@ -128,13 +128,14 @@ def table_contrasts(s, level, path, caption, label):
 \\label{{{label}}}
 \\footnotesize
 \\setlength{{\\tabcolsep}}{{4pt}}
+\\resizebox{{\\textwidth}}{{!}}{{%
 \\begin{{tabular}}{{llllrccccl}}
 \\toprule
  & Domain & Anchor & Comparator & $n$ & Sig.\\ (A/C) & $\\bar W$ & 95\\% CI & Rel.\\ diff. & Verdict \\\\
 \\midrule
 {body}
 \\bottomrule
-\\end{{tabular}}
+\\end{{tabular}}}}
 \\end{{table*}}
 """
     path.write_text(tex, encoding="utf-8")
