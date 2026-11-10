@@ -121,7 +121,7 @@ def confirmatory():
             res(f"S1-{h}-{BSHORT[b]}-medA", f"{g['median_A']:.3f}")
         rows.append(f"{h}$'$ & all 56 instances (vs {comp}) & {s['median_A']:.3f} & {s['n_gt']}/{s['n_eq']}/"
                     f"{s['n_lt']} & {pfmt(s['p_wilcox'])} & -- & -- & -- & {s['sig_for']}/{s['sig_against']} \\\\")
-    write("tab_confirm.tex", r"""\begin{table*}[t]
+    write("tab_confirm.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{Confirmatory tests on the 28 held-out instances (H1, H2) and their repetition on all 56 instances
 (H1$'$, H2$'$, secondary: the 28 additional instances include those used to choose the eigen-frame probability).
@@ -140,7 +140,7 @@ Sig.: instances where a paired per-instance test (Holm within benchmark) favours
 """ + "\n".join(rows[:2]) + "\n\\midrule\n" + "\n".join(rows[2:]) + r"""
 \bottomrule
 \end{tabular}}
-\end{table*}
+\end{table}
 """)
     return H
 
@@ -201,7 +201,7 @@ def comparison(D):
             cells.append(f"\\textbf{{{v}}}" if rk[a] == best else v)
         lines.append(f"{LABEL[a]} & " + " & ".join(cells) + " \\\\")
     fr = " & ".join(pfmt(S[f]["friedman_p"]) for f in folders)
-    write("tab_ranks.tex", r"""\begin{table}[t]
+    write("tab_ranks.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{Mean Friedman rank of the eleven algorithms (rank of the median final error on each instance, 1 = best;
 lowest in bold), per benchmark and over all 56 instances. Last row: Friedman test $p$ per benchmark.}
@@ -237,7 +237,7 @@ Algorithm & C10 & C20 & B20 & FIR & All \\
     res("common-win", int(sum(tot_all[c][0] for c in common)))
     res("common-loss", int(sum(tot_all[c][2] for c in common)))
     res("common-n", 56 * len(common))
-    write("tab_wtl.tex", r"""\begin{table}[t]
+    write("tab_wtl.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{EIG-MPHBS against each algorithm: number of instances where it is significantly better / not
 significantly different / significantly worse (paired two-sided Wilcoxon signed-rank test over the 30 seed-paired
@@ -275,7 +275,7 @@ vs & C10 (12) & C20 (12) & B20 (24) & FIR (8) & Total (56) \\
                r"$10^{-8}$ are shown as 0; lowest median in bold. Superscripts compare with EIG-MPHBS "
                r"(paired Wilcoxon, Holm within benchmark and comparator): $^{+}$ EIG-MPHBS significantly better, "
                r"$^{-}$ significantly worse, $^{\approx}$ no significant difference.")
-        write(f"tab_med_{BSHORT[f]}.tex", r"""\begin{table*}[p]
+        write(f"tab_med_{BSHORT[f]}.tex", r"""\begin{table}[p]
 \centering
 \caption{""" + cap + r"""}
 \label{tab:med-""" + BSHORT[f] + r"""}
@@ -287,7 +287,7 @@ vs & C10 (12) & C20 (12) & B20 (24) & FIR (8) & Total (56) \\
 """ + "\n".join(rows) + r"""
 \bottomrule
 \end{tabular}}
-\end{table*}
+\end{table}
 """)
 
 
@@ -306,7 +306,7 @@ def rotation():
     for a in ("EIG50", "RND", "MPHBS", "CMA-ES", "L-SHADE"):
         lines.append(f"{LABEL[a]} & {num(e[a]['median_separable'])} & {num(e[a]['median_rotated'])} & "
                      f"{num(r[a]['median_separable'])} & {num(r[a]['median_rotated'])} \\\\")
-    write("tab_rotation.tex", r"""\begin{table}[t]
+    write("tab_rotation.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{Median final error on BBOB function pairs that differ only by a rotation ($D=20$, 30 runs; values at or
 below $10^{-8}$ shown as 0).}
@@ -340,7 +340,7 @@ def ea4eig():
             mark = {"EIG50": "$^{+}$", "EA4eig": "$^{-}$"}.get(r.sig if isinstance(r.sig, str) else "", "$^{\\approx}$")
             cells += [num(r["median"]) + mark, num(r.ea4eig_median), f"{r.A_vs_ea4eig:.2f}"]
         rows.append(f"F{i} & " + " & ".join(cells) + " \\\\")
-    write("tab_ea4eig.tex", r"""\begin{table}[t]
+    write("tab_ea4eig.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{EIG-MPHBS against the official CEC2022 runs of EA4eig at the competition budgets ($2\times10^5$
 evaluations for $D=10$, $10^6$ for $D=20$; 30 runs each). Median final error (at or below $10^{-8}$ shown as 0) and
@@ -376,7 +376,7 @@ def cost(D):
         cells = [f"{d[d.method == a].runtime_sec.median():.1f}" for d in D.values()]
         lines.append(f"{LABEL[a]} & " + " & ".join(cells) + " \\\\")
     rr = " & ".join(f"{ratios[f]:.3f}" for f in D)
-    write("tab_cost.tex", r"""\begin{table}[t]
+    write("tab_cost.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{Median wall-clock time per run in seconds (Python 3, NumPy, one core per run, 11 runs in parallel on a
 12-core laptop; other jobs shared the machine, so times are indicative). Last row: median paired ratio of the run
@@ -675,7 +675,7 @@ def ablation():
             cells.append(f"{np.median(As):.2f} ({w}/{len(As) - w - l}/{l})")
         lines.append(f"{name} & " + " & ".join(cells) + " \\\\")
         res(f"abl-{key}-runs", int(d.groupby(["method", "instance"]).size().min()))
-    write("tab_ablation.tex", r"""\begin{table*}[t]
+    write("tab_ablation.tex", r"""\begin{table}[!htbp]
 \centering
 \caption{Ablation and sensitivity to the eigen-frame probability $q$ in the pilot study (10 seed-paired runs per
 instance; exploratory, and these instances are excluded from the confirmatory test). ``No exchange'' removes Phase 2;
@@ -694,7 +694,7 @@ Benchmark & """ + " & ".join(lab[a] for a in arms) + r""" & $q=0$ & $q=1$ \\
 """ + "\n".join(lines) + r"""
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 """)
 
 
@@ -710,7 +710,7 @@ def meanstd_tables(D):
                 s = f"{num(means[a])} ({num(g.loc[(i, a), 'std'])})"
                 cells.append(f"\\textbf{{{s}}}" if means[a] == best else s)
             rows.append(f"{FNAME[f]}{i} & " + " & ".join(cells) + " \\\\")
-        write(f"tab_ms_{BSHORT[f]}.tex", r"""\begin{table*}[p]
+        write(f"tab_ms_{BSHORT[f]}.tex", r"""\begin{table}[p]
 \centering
 \caption{Mean (standard deviation) of the final error over 30 runs on """ + BLABEL[f] + r""" (FIR: objective
 value); values at or below $10^{-8}$ shown as 0; lowest mean in bold.}
@@ -723,7 +723,7 @@ value); values at or below $10^{-8}$ shown as 0; lowest mean in bold.}
 """ + "\n".join(rows) + r"""
 \bottomrule
 \end{tabular}}
-\end{table*}
+\end{table}
 """)
 
 

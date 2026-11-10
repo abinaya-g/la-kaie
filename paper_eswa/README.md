@@ -32,7 +32,7 @@ and fails if any identifying string remains in its PDF text, PDF metadata or sou
 | `manuscript_anonymized.pdf`, `manuscript_source.zip` | Manuscript (anonymized) and its LaTeX source |
 | `title_page.pdf` (source `submission/title_page.tex`) | Title page (author details, acknowledgements, declarations) |
 | `highlights.txt` | Highlights |
-| `Figure_1.pdf` ... `Figure_10.pdf`, `Figure_A1.pdf` | Figures |
+| `Figure_1.pdf` ... `Figure_10.pdf`, `Figure_11.pdf` | Figures |
 | `cover_letter.pdf` (source `submission/cover_letter.tex`) | Cover letter |
 
 ## Still to do by the author (outside this repository)

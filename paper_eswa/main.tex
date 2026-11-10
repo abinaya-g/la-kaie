@@ -10,12 +10,19 @@
 \usepackage[noend]{algpseudocode}
 \usepackage{tikz}
 \usetikzlibrary{positioning,calc,arrows.meta,fit,backgrounds,shapes.geometric}
-\usepackage{placeins}
+\usepackage[section]{placeins}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
 \usepackage[margin=2.5cm]{geometry}
 
 \setlength{\emergencystretch}{2em}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
 \newtheorem{proposition}{Proposition}
 \newtheorem{corollary}{Corollary}
 \theoremstyle{remark}
@@ -224,7 +231,7 @@ eigen-subspaces before recombining them, and \citet{tang2022adaptive} transfer k
 system built from the major eigenvectors of both populations. QLRUN~\citep{adam2027qlrun} combines Q-learning with
 covariance matrix learning in a single metaheuristic.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Recombination in population-derived coordinate systems (from the cited papers' descriptions).}
 \label{tab:related}
@@ -245,7 +252,7 @@ EIG-MPHBS (this work) & HBA + MPA hybrid & two heterogeneous & dimension-wise in
 the pooled covariance, with probability $q$ \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \subsection{Research gap}
 Exchanging information between populations in an eigen frame of their joint distribution is therefore known, and the
@@ -404,15 +411,15 @@ instances are excluded from the confirmatory test (Section~\ref{sec:design}).
 \paragraph{Feasibility} Rotation can move a recombined point outside the box. We clip after mapping back, which keeps
 the evaluation budget unchanged; the re-projection of accepted points keeps the internal state consistent.
 
-\begin{figure*}[!t]
+\begin{figure}[!htbp]
 \centering
 \input{figures/fig_architecture_tikz.tex}
 \caption{Architecture of EIG-MPHBS. Left: one iteration of the hybrid. Right: the eigen-frame exchange (Phase 2).
 Blue boxes are the only additions to the random-mediator hybrid MPHBS-R; they use no function evaluations.}
 \label{fig:architecture}
-\end{figure*}
+\end{figure}
 
-\begin{algorithm}[t]
+\begin{algorithm}[!htbp]
 \caption{One iteration of EIG-MPHBS. Lines~\ref{line:frame}, \ref{line:proj} and~\ref{line:back} differ from MPHBS-R.}
 \label{alg:iteration}
 \small
@@ -529,7 +536,7 @@ use the same budget. The classical algorithms stop exactly at the budget, while 
 complete iteration (199\,930 of 200\,000 evaluations on CEC2022 and BBOB, 149\,857 of 150\,000 on FIR). No algorithm was
 tuned on our benchmarks beyond the choice of $q$ described above.
 
-\begin{table*}[t]
+\begin{table}[!htbp]
 \centering
 \caption{Algorithms and settings. $N$: population size; the HBA--MPA hybrids run two populations of $N$ each.}
 \label{tab:algos}
@@ -553,7 +560,7 @@ CMA-ES & IPOP-CMA-ES~\citep{auger2005ipop}, pycma~\citep{hansen2019pycma}; $\sig
 population doubled at each restart \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \subsection{Experimental design and statistics}
 \label{sec:design}
@@ -609,7 +616,7 @@ instances on which $q$ was chosen, so their effect sizes may be optimistic.
 
 \input{generated/tab_confirm.tex}
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/fig_heldout.pdf}
 \caption{Effect size $A$ of EIG-MPHBS on each of the 28 held-out instances against MPHBS-R (H1) and MPHBS (H2);
@@ -647,20 +654,20 @@ and f11. On f14 (sum of different powers, moderately coupled) the acceptance rat
 smaller. This supports the explanation of Section~\ref{sec:method}: the eigen frame restores the exchange channel on
 coupled problems rather than changing the native moves.
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_mechanism.pdf}
 \caption{Mechanism of the eigen frame on BBOB $D=20$. Top: fraction of exchanged candidates accepted per iteration
 (moving average over 25 iterations). Bottom: population diversity (log scale). Medians over 30 runs. f2 is separable;
 f10 (ellipsoid), f11 (discus) and f14 (sum of different powers) are rotated.}
 \label{fig:mechanism}
-\end{figure*}
+\end{figure}
 
 \subsection{Comparison with ten algorithms (RQ3)}
 \label{sec:comparison}
 Fig.~\ref{fig:ranks} and Table~\ref{tab:ranks} give the mean Friedman ranks of the eleven algorithms, and
 Table~\ref{tab:wtl} and Fig.~\ref{fig:wtlmap} the per-instance significance of EIG-MPHBS against each of them.
-Tables~\ref{tab:med-C10}--\ref{tab:ms-FIR} in \ref{app:tables} give medians, means and standard deviations per
+Tables~\ref{tab:med-C10}--\ref{tab:ms-FIR} in Section~\ref{app:tables} give medians, means and standard deviations per
 instance. The Friedman test rejects equal performance on every benchmark ($p\le\res{friedman-FIR}$).
 
 EIG-MPHBS ranks \res{pos-EIG50} of 11 overall (mean rank \res{rank-EIG50}), behind L-SHADE (\res{rank-L-SHADE}) and
@@ -684,7 +691,7 @@ $D=10$, while the wins over the classical algorithms are nearly uniform. GWO and
 problems; both are known to be biased towards the centre of the search space~\citep{kudela2022centre}, which our unit
 tests confirm on a shifted sphere.
 
-\begin{figure}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.92\linewidth]{figures/fig_ranks.pdf}
 \caption{Mean Friedman rank of each algorithm per benchmark (markers) and over all 56 instances (vertical bar);
@@ -695,13 +702,13 @@ tests confirm on a shifted sphere.
 \input{generated/tab_ranks.tex}
 \input{generated/tab_wtl.tex}
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_wtl_map.pdf}
 \caption{Per-instance comparison of EIG-MPHBS with each algorithm (paired Wilcoxon over 30 runs, Holm within benchmark
 and comparator). Each column is one instance: CEC2022 F1--F12 at $D=10$ and $D=20$, BBOB f1--f24, FIR cases 1--8.}
 \label{fig:wtlmap}
-\end{figure*}
+\end{figure}
 
 \subsection{Distributions of the final error}
 Fig.~\ref{fig:boxplots} shows the distributions of the final error of all eleven algorithms on the two instances per
@@ -710,44 +717,44 @@ that of MPHBS and MPHBS-R on these instances, and on BBOB f11 and FIR case 3 its
 The boxplots also show how far the classical metaheuristics fall behind on the shifted and rotated problems, and the
 large spread of DE and PSO.
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_boxplots.pdf}
 \caption{Final error over 30 runs (log scale) on two instances per benchmark. EIG-MPHBS in dark blue, MPHBS-R and MPHBS
 in light blue, the other algorithms in grey.}
 \label{fig:boxplots}
-\end{figure*}
+\end{figure}
 
 \subsection{Convergence behaviour}
 Fig.~\ref{fig:convergence} shows median convergence curves of seven algorithms on six instances, and
-Figs.~\ref{fig:conv-C20} and~\ref{fig:conv-FIR} (and Fig.~\ref{fig:conv-C10} in \ref{app:tables}) on all instances of
+Figs.~\ref{fig:conv-C20} and~\ref{fig:conv-FIR} (and Fig.~\ref{fig:conv-C10} in Section~\ref{app:tables}) on all instances of
 CEC2022 $D=20$ and FIR. On BBOB f10, f14 and f19 and on CEC2022 $D=20$ F\res{conv-C20}, EIG-MPHBS separates from MPHBS
 and MPHBS-R early and keeps its lead. On f4 the eigen frame slows it down slightly. On CEC2022 $D=20$ the hybrid family
 converges faster than MPA and DE on most functions, while CMA-ES converges fastest on the unimodal ones. On FIR,
 EIG-MPHBS converges to lower values than MPHBS and MPHBS-R on most cases, but CMA-ES and L-SHADE reach lower values.
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_convergence.pdf}
 \caption{Median best-so-far error over 30 runs against function evaluations (FIR: objective value), log scale. The
 CEC2022 and FIR instances are those with the strongest per-instance effect of EIG-MPHBS against MPHBS-R; BBOB f4 is
 the held-out instance where it is significantly worse.}
 \label{fig:convergence}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_conv_C20.pdf}
 \caption{Median best-so-far error on CEC2022 $D=20$, F1--F12 (30 runs, log scale).}
 \label{fig:conv-C20}
-\end{figure*}
+\end{figure}
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_conv_FIR.pdf}
 \caption{Median best-so-far objective value on the eight FIR filter-design problems (30 runs, log scale).}
 \label{fig:conv-FIR}
-\end{figure*}
+\end{figure}
 
 \subsection{Engineering application: FIR filter design}
 \label{sec:fir}
@@ -760,14 +767,14 @@ decibels more attenuation than MPHBS near the transition band, and L-SHADE more 
 terms, all three produce usable filters, and the objective differences of Table~\ref{tab:med-FIR} correspond to a few
 decibels of stop-band attenuation.
 
-\begin{figure*}[t]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/fig_fir.pdf}
 \caption{Magnitude response of the median-quality filter (15th of 30 runs by objective value) of three algorithms on
 the four harder FIR cases. Shaded: pass band (blue) and stop band (orange). Objective values $F$ in the panel titles in
 the order EIG-MPHBS / MPHBS / L-SHADE.}
 \label{fig:fir}
-\end{figure*}
+\end{figure}
 
 \subsection{Ablation and sensitivity to the frame probability (RQ4)}
 \label{sec:ablation}
@@ -803,6 +810,31 @@ iterations are simpler; with expensive objectives, where evaluations dominate, t
 become negligible.
 
 \input{generated/tab_cost.tex}
+
+\subsection{Detailed per-instance results}
+\label{app:tables}
+For completeness, Fig.~\ref{fig:conv-C10} shows the convergence curves on CEC2022 $D=10$, and
+Tables~\ref{tab:med-C10}--\ref{tab:med-FIR} and~\ref{tab:ms-C10}--\ref{tab:ms-FIR} give the median and the mean
+(standard deviation) of the final error of all eleven algorithms on every instance. The superscripts in the median
+tables mark the per-instance tests summarised in Table~\ref{tab:wtl} and Fig.~\ref{fig:wtlmap}.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_conv_C10.pdf}
+\caption{Median best-so-far error on CEC2022 $D=10$, F1--F12 (30 runs, log scale).}
+\label{fig:conv-C10}
+\end{figure}
+
+\input{generated/tab_med_C10.tex}
+\input{generated/tab_med_C20.tex}
+\input{generated/tab_med_B20.tex}
+\input{generated/tab_med_FIR.tex}
+\input{generated/tab_ms_C10.tex}
+\input{generated/tab_ms_C20.tex}
+\input{generated/tab_ms_B20.tex}
+\input{generated/tab_ms_FIR.tex}
+
+\FloatBarrier
 
 %% =====================================================================
 \section{Discussion}
@@ -875,27 +907,6 @@ appeared to influence the work reported in this paper.
 This research did not receive any specific grant from funding agencies in the public, commercial, or not-for-profit
 sectors.
 
-\appendix
-\section{Detailed results}
-\label{app:tables}
-
-\begin{figure*}[h]
-\centering
-\includegraphics[width=\textwidth]{figures/fig_conv_C10.pdf}
-\caption{Median best-so-far error on CEC2022 $D=10$, F1--F12 (30 runs, log scale).}
-\label{fig:conv-C10}
-\end{figure*}
-
-\input{generated/tab_med_C10.tex}
-\input{generated/tab_med_C20.tex}
-\input{generated/tab_med_B20.tex}
-\input{generated/tab_med_FIR.tex}
-\input{generated/tab_ms_C10.tex}
-\input{generated/tab_ms_C20.tex}
-\input{generated/tab_ms_B20.tex}
-\input{generated/tab_ms_FIR.tex}
-
-\FloatBarrier
 \bibliographystyle{elsarticle-harv}
 \bibliography{refs}
 

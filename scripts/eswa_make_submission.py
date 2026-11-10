@@ -6,7 +6,7 @@ Output: paper_eswa/submission/package/
   title_page.pdf                 author details, acknowledgements, declarations, data link
   cover_letter.pdf
   highlights.txt
-  Figure_1.pdf ... Figure_10.pdf, Figure_A1.pdf   artwork as separate files
+  Figure_1.pdf ... Figure_10.pdf, Figure_11.pdf   artwork as separate files
 
 Anonymization: lines between %@NAMED-BEGIN and %@NAMED-END are dropped, lines starting with "%@ANON: " are
 uncommented, the companion-paper citation is replaced by "Anonymous (2026)", and its bibliography entry is removed.
@@ -34,7 +34,7 @@ LEAKS = ["abinaya", "saveetha", "gabinaya", "github.com/abinaya", "g2026deconstr
 FIGURES = [("fig_architecture", "Figure_1"), ("fig_heldout", "Figure_2"), ("fig_mechanism", "Figure_3"),
            ("fig_ranks", "Figure_4"), ("fig_wtl_map", "Figure_5"), ("fig_boxplots", "Figure_6"),
            ("fig_convergence", "Figure_7"), ("fig_conv_C20", "Figure_8"), ("fig_conv_FIR", "Figure_9"),
-           ("fig_fir", "Figure_10"), ("fig_conv_C10", "Figure_A1")]
+           ("fig_fir", "Figure_10"), ("fig_conv_C10", "Figure_11")]
 
 
 def run(cmd, cwd):
