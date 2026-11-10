@@ -1,7 +1,7 @@
 # Suggested reviewers (Journal of Heuristics)
 
-Retargeted from Swarm and Evolutionary Computation (desk-rejected 2026). Before submitting, check that none of the
-people below is an editor of the Journal of Heuristics (see the journal's editorial board page).
+Before submitting, check that none of the people below is an editor of the Journal of Heuristics (see the journal's
+editorial board page).
 
 Affiliations checked in Scopus author profiles on 2026-10-27. **Before submitting, copy each e-mail address from the
 person's institutional page or the corresponding-author line of a recent paper**; only one address was confirmed here.

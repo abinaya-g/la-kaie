@@ -64,7 +64,7 @@ guided by a SARSA value table. Its published random control spends $N$ extra eva
 A pre-registered study with matched controls, \res{runs-total} seed-paired runs on CEC2022 ($D=20$) and eight FIR
 filter-design problems, finds that a random mediator performs at least as well as SARSA (mean paired win probability of
 SARSA \res{H1-CEC2022-wbar} and \res{H1-FIR-wbar}). The exchange step and the memory handling carry the performance. We
-then explain the failure of learning from the update rule: it credits each reward to the provenance of the current
+then explain this result from the update rule: it credits each reward to the provenance of the current
 vector rather than to the choices tried, and its learning rate limits each entry to an average over about
 \res{th-memory} updates. Logged runs confirm both effects: on FIR no stable signal exists, and on CEC2022 the table ranks
 a stable signal in reverse (Spearman \res{th-CEC-Qmid_validity_rho}). An extension to the 24 BBOB functions replicates
@@ -115,8 +115,8 @@ Our contributions are:
   \res{V3-FIR-n} FIR cases.
 \item A pre-registered study~\citep{nosek2018preregistration} with budget-identical controls that separates the four
   candidate causes, with a mechanical decision rule fixed before any run (Section~\ref{sec:design}).
-\item The finding that learning brings no benefit at equal budget, that the exchange step and the memory handling carry
-  the performance, and a post hoc diagnostic that links the memory effect to population diversity
+\item The finding that, at equal budget, random assembly is as effective as the learned policy, and that the exchange
+  step and the memory handling carry the performance, and a post hoc diagnostic that links the memory effect to population diversity
   (Section~\ref{sec:results}).
 \item An explanation of this finding from the update rule itself: the table credits each reward to the provenance of
   the current vector rather than to the choices tried, and its learning rate imposes a noise floor on every entry
@@ -396,7 +396,7 @@ F10, a bimodal composition function, SARSA escapes the dominant local basin (fin
 \res{auth-F10-MPHB-esc}/30.
 
 %% =====================================================================
-\section{Why the published control is not matched}
+\section{Matching of the published control}
 \label{sec:control}
 
 \subsection{Evaluation budget}
@@ -467,7 +467,7 @@ remove Phase~2 (SKEL), or refresh the MPA memory after Phase~2 at no cost (RND-S
 \end{figure}
 
 %% =====================================================================
-\section{Why the table cannot learn: credit assignment and a noise floor}
+\section{What the value table learns: credit assignment and a noise floor}
 \label{sec:theory}
 
 The analysis so far concerns the control. This section asks what the learned component itself can achieve, and derives
@@ -562,8 +562,8 @@ Proposition~\ref{prop:credit} leads one to expect. A provenance that produces go
 episodes, and in each of these episodes the table charges it with the failure of whatever candidate is tried next; the
 better the provenance, the more penalties it collects.
 
-These measurements explain the outcome of H1 rather than merely restating it. The learned policies cannot help on FIR,
-where no signal persists, and on CEC2022 they are steered away from the better choices. That SARSA's paired win probability
+These measurements explain the outcome of H1 rather than merely restating it. On FIR no persistent signal is
+available to the learned policies, and on CEC2022 the table orders the choices opposite to their later outcomes. That SARSA's paired win probability
 against the random mediator is slightly below one half on both benchmarks ($\bar W=\res{H1-CEC2022-wbar}$ and
 \res{H1-FIR-wbar}, Section~\ref{sec:results}) is consistent with this, although on FIR a further cause is plausible: greedy and second-best policies concentrate the choices on a few cells even when the table carries
 no information. The noise floor of Proposition~\ref{prop:noise} would limit any table with $\alpha=0.1$; the credit
@@ -722,7 +722,8 @@ F5 with median errors of $\res{H2b-CEC2022-i5-amed}$ and $\res{H2b-CEC2022-i5-cm
 functions (F1, F11) favour the update, the verdict is \emph{mixed}.
 
 H2a and H2b together explain the published SARSA-versus-mirror difference without any contribution of learning: the
-published mirror carries a handicap that is due mostly to the memory update on CEC2022 and to the reduced budget on FIR.
+the difference comes from the published mirror's configuration, mostly the memory update on CEC2022 and the reduced
+budget on FIR.
 RND-AUTH's F10 escape rate (below) and its agreement with the authors' runs support this account.
 
 \subsection{RQ3: what does matter (H3, H4)}
@@ -831,7 +832,7 @@ Table~\ref{tab:bbob} and Fig.~\ref{fig:bbob} summarise the results. \textbf{Lear
 assembly are practically equivalent ($\bar W=\res{bbob-B1-D10-wbar}$ \res{bbob-B1-D10-ci}; no significant function). At
 $D=20$ the verdict is mixed: SARSA is better on f3 (separable Rastrigin) and random assembly on f9 (rotated Rosenbrock),
 while the interval for $\bar W$ (\res{bbob-B1-D20-wbar} \res{bbob-B1-D20-ci}) again lies below 0.5. BBOB thus replicates
-H1 on a third, independent suite: the learned controller brings no benefit.
+H1 on a third, independent suite: random assembly is again as effective as the learned controller.
 
 \textbf{Mediator (B3).} The value of the mediator depends on the function class (Table~\ref{tab:bbob-groups}). It helps
 strongly on separable or nearly separable functions, for example f3 and f4 (Rastrigin, B\"uche--Rastrigin), f6 (attractive
@@ -985,12 +986,12 @@ choice. The relative difference $\hat\delta$ was added after the pre-registratio
 %% =====================================================================
 \section{Conclusion}
 \label{sec:conclusion}
-The learned controller of MPHBS does not improve on random choices at an equal budget on CEC2022 or FIR. The published
-evidence for it rests on a control that is handicapped by its evaluation budget and, under the CEC2022 configuration, by a
-memory update that collapses population diversity. MPHBS's performance comes from exchanging information between its
+At an equal budget, random choices are as effective as the learned controller of MPHBS on CEC2022 and FIR. The
+published comparison uses a control that runs fewer iterations under the same budget and, under the CEC2022
+configuration, applies a memory update that reduces population diversity. MPHBS's performance comes from exchanging information between its
 populations, from the amount of exchange, and from its handling of the population memory; its restructured loop is
-consistently but negligibly better than the original backbone. On the BBOB suite the learned controller again brings no
-benefit, and the exchange step helps only on separable functions. The update rule explains why learning cannot help:
+consistently but negligibly better than the original backbone. On the BBOB suite random assembly is again as effective as the
+learned controller, and the exchange step helps on separable functions. The update rule explains this result:
 it credits each reward to the provenance of the current vector rather than to the choices tried, and its learning rate
 limits every entry to an average over about \res{th-memory} updates. Logged runs confirm both effects: on FIR no stable
 signal exists, and on CEC2022 the table ranks a stable signal in the wrong order. More generally, a contrast between a
