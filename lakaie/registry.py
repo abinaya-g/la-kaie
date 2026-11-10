@@ -6,7 +6,7 @@ from functools import lru_cache
 
 import numpy as np
 
-from .algorithms import hba, mpa, mphb, mphbs, mphbs_variants
+from .algorithms import exchange_hybrids, hba, mpa, mphb, mphbs, mphbs_variants
 from .algorithms.baselines import BUDGETED
 from .core import calibrate_iterations
 
@@ -14,7 +14,7 @@ from .core import calibrate_iterations
 # the authors' runners (FE probe with T=1 and T=2). MPHBS-V holds the Path A
 # deconstruction arms (configs/pathA.yaml).
 ITERATIVE = {"HBA": hba.run, "MPA": mpa.run, "MPHB": mphb.run, "MPHBS": mphbs.run,
-             "MPHBS-V": mphbs_variants.run}
+             "MPHBS-V": mphbs_variants.run, "XHYB": exchange_hybrids.run}
 
 
 def method_family(name: str) -> str:

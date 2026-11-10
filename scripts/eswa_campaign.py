@@ -30,6 +30,14 @@ EXTRA = {     # common metaheuristic baselines (addendum, 2026-11-07); N = 30 li
     "GWO": ("GWO", None), "WOA": ("WOA", None),
 }
 ARMS.update(EXTRA)
+_NOFAD = {"mediator": "random", "fad_before_p2": False, "fad_after_p2": False}
+XHYB = {      # the same exchange between other parent pairs (addendum, Section 10, 2026-11-10)
+    "PD-R":   ("XHYB", {**_NOFAD, "hosts": "PSO+DE"}),
+    "PD-EIG": ("XHYB", {**_NOFAD, "hosts": "PSO+DE", "frame": "eigen", "eigen_prob": 0.5}),
+    "GW-R":   ("XHYB", {**_NOFAD, "hosts": "GWO+WOA"}),
+    "GW-EIG": ("XHYB", {**_NOFAD, "hosts": "GWO+WOA", "frame": "eigen", "eigen_prob": 0.5}),
+}
+ARMS.update(XHYB)
 MAIN = ["MPHBS", "RND", "EIG50", "CMA-ES", "L-SHADE"]
 MASTER = 95000000
 CAMPAIGN = "eswa_eigen"

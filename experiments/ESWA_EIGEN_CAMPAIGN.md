@@ -150,3 +150,27 @@ area usually show. Descriptive only: no hypothesis is added and H1/H2 are unchan
   Launch: `bash scripts/eswa_campaign_extra.sh`.
 - Reporting: the five main arms and these six together in the S3 tables and Friedman ranks. L-SHADE, CMA-ES and
   EA4eig stay in every table as the state-of-the-art references.
+
+## 10. Addendum (2026-11-10; prepared, NOT RUN): does the eigen frame transfer to other parent pairs?
+
+Status: implemented and tested (tests/eswa/test_exchange_hybrids.py), not run. A smoke test showed ~230-460 s per
+run, so the full design would take about 2.5 days; it is kept for a possible revision of the ESWA paper.
+
+Question: is the gain of the eigen frame specific to HBA + MPA, or does it hold for the same dimension-wise exchange
+between other parent algorithms? Fixed before any run of these arms.
+
+- Arms (family `XHYB`, `lakaie/algorithms/exchange_hybrids.py`): the Phase-2 mediator of EIG50/RND, unchanged, between
+  two populations (N = 30 each) moved by other parent algorithms, with no FAD stage.
+  - `PD-R`: PSO + DE, random mediator, axis frame. `PD-EIG`: the same with `frame: eigen, eigen_prob: 0.5`.
+  - `GW-R`: GWO + WOA, random mediator, axis frame. `GW-EIG`: the same with `frame: eigen, eigen_prob: 0.5`.
+  - Parent settings as in Section 9 (PSO inertia 0.9 -> 0.4, c1 = c2 = 2; DE/rand/1/bin F = 0.5, CR = 0.9; GWO and
+    WOA as published). Mediator settings as the domain's MPHBS configuration (B-C1 for CEC2022 and BBOB, A-C1 for FIR).
+  - Best members are tracked as best-ever per population, so the global best never worsens (PSO, GWO and WOA replace
+    their positions each generation).
+- q = 0.5 is taken unchanged from the MPHBS pilot; none of these arms was piloted, so all 56 instances are held out.
+- Benchmarks, budgets, 30 runs and seeds as Section 3 (paired with all other arms).
+- **H3 (confirmatory):** for each parent pair, the eigen variant outperforms its axis variant: median Vargha-Delaney A
+  over the 56 instances exceeds 0.5. One-sided Wilcoxon signed-rank test of A - 0.5 (scipy default zero handling;
+  Pratt and zero-split reported), Holm over the two pairs, alpha 0.05.
+- Secondary: per-instance paired Wilcoxon with Holm within benchmark; BBOB f10/f2 and f15/f3; exchange acceptance rates.
+- Launch: `bash scripts/eswa_campaign_xhyb.sh`. 6 720 runs, estimated 12-15 h with 11 workers.

@@ -66,7 +66,10 @@ def eigen_basis(P):
     return V
 
 
-def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
+def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None, state_cls=HybridState, probe=None):
+    """``state_cls`` supplies the two populations and their Phase-1 moves (default: HBA + MPA, as in MPHBS);
+    exchange_hybrids.py passes other parent pairs. ``probe(t, T, ep, reward, accepted, active, rows, ch, rows_next,
+    ch_next, Q)`` is called after every mediator episode (diagnostics only; it must not change its arguments)."""
     K, Ni = int(cfg["K"]), int(cfg["Ni"])
     rho, w_best, gamma = float(cfg["rho_sub"]), float(cfg["w_best"]), float(cfg["gamma"])
     fad_before, fad_after = bool(cfg["fad_before_p2"]), bool(cfg["fad_after_p2"])
@@ -78,7 +81,7 @@ def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
     n_sub = min(N, max(5, matlab_round(N * rho)))
     Q = np.zeros((dim, n_sub, 2))
 
-    s = HybridState(obj, lb, ub, dim, N, rng)
+    s = state_cls(obj, lb, ub, dim, N, rng)
     for t in range(T):
         if fl["reeval_mpa_top"]:
             s.eval_mpa(obj)
@@ -172,6 +175,8 @@ def run(obj, T, lb, ub, dim, N, rng, cfg, rec=None):
                         pred = Q[c, rows[c], ch[c]]
                         nq = Q[c, rows_next[c], ch_next[c]] if accepted else pred
                         Q[c, rows[c], ch[c]] = pred + ALPHA_LR * (reward + gamma * nq - pred)
+                if probe is not None:
+                    probe(t, T, ep, reward, accepted, active, rows, ch, rows_next, ch_next, Q)
 
                 if accepted:
                     n_acc += 1
