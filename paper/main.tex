@@ -39,6 +39,9 @@
 \algrenewcommand\algorithmicensure{\textbf{Output:}}
 
 \input{generated/results.tex}
+\input{generated/theory.tex}
+% a missing result key is an error, not a silently empty number
+\renewcommand\res[1]{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\PackageError{res}{Undefined result key #1}{}\fi}
 \input{generated/bbob.tex}
 
 
@@ -456,7 +459,7 @@ We confirmed Proposition~\ref{prop:memory} and the inertness of the copy with bi
 
 \begin{figure}[t]
 \centering
-\resizebox{\columnwidth}{!}{\input{figures/fig1_loop.tex}}
+\resizebox{0.62\textwidth}{!}{\input{figures/fig1_loop.tex}}
 \caption{One MPHBS iteration with its evaluation cost ($N$ agents per population, $E$ mediator episodes). The dashed block
 exists only in the authors' random mirror. The arms of Table~\ref{tab:arms} replace the mediator's policy (RND-FAIR),
 remove Phase~2 (SKEL), or refresh the MPA memory after Phase~2 at no cost (RND-SYNC).}
@@ -535,7 +538,6 @@ structure of this mediator, and both can be measured.
 
 \subsection{Post hoc check}
 \label{sec:theorycheck}
-\input{generated/theory.tex}
 The two propositions concern the update rule and hold by construction; whether their consequences matter depends on the
 rewards that MPHBS actually produces. We logged every mediator episode of \res{th-runs} additional MPHBS runs (5 per
 instance, seeds disjoint from the study, budgets as in Section~\ref{sec:design}): the reward, the provenance of the

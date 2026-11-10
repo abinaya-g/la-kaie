@@ -37,6 +37,8 @@
 \definecolor{cgray}{HTML}{F0EFEC}
 
 \input{generated/results.tex}
+% a missing result key is an error, not a silently empty number
+\def\res#1{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\PackageError{res}{Undefined result key #1}{}\fi}
 
 \journal{Expert Systems with Applications}
 
