@@ -1,6 +1,6 @@
 """Write paper_eswa/highlights.txt as a minimal Word file (highlights.docx), one bullet per paragraph.
 
-Standard library only (no python-docx). Usage: python scripts/eswa_highlights_docx.py <out.docx>
+Standard library only (no python-docx). Usage: python scripts/eswa_highlights_docx.py <out.docx> [highlights.txt]
 """
 import sys
 import zipfile
@@ -8,7 +8,8 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 
 ROOT = Path(__file__).resolve().parents[1]
-lines = [l.lstrip("- ").strip() for l in (ROOT / "paper_eswa" / "highlights.txt").read_text(encoding="utf-8").splitlines()
+SRC = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "paper_eswa" / "highlights.txt"
+lines = [l.lstrip("- ").strip() for l in SRC.read_text(encoding="utf-8").splitlines()
          if l.strip()]
 W = 'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"'
 paras = "".join(f'<w:p><w:r><w:t xml:space="preserve">• {escape(l)}</w:t></w:r></w:p>' for l in lines)

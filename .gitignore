@@ -27,3 +27,8 @@ paper_eswa/submission/*.log
 paper_eswa/submission/*.out
 paper_eswa/figures/*.aux
 paper_eswa/figures/*.log
+paper/submission/*.aux
+paper/submission/*.log
+paper/submission/*.out
+paper/figures/*.aux
+paper/figures/*.log

@@ -1,0 +1,5 @@
+- A published "matched" random control runs up to 21% fewer iterations than MPHBS
+- At an identical budget, random assembly is at least as good as SARSA
+- The exchange step and memory handling, not learning, carry the performance
+- Pre-registered study with 14,300 seed-paired runs on CEC2022 and FIR design
+- Budget- and state-matched ablation controls are defined, with a protocol
