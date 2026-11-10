@@ -103,9 +103,10 @@ MPHBS~\citep{flores2026mphbs} is a recent multi-population hybrid of the Honey B
 metaheuristics. In every iteration, after both algorithms have moved their own population, a mediator assembles new
 candidate solutions dimension by dimension from the best members of both populations: coordinate $d$ of a candidate is
 copied from a chosen member of the HBA or the MPA population. MPHBS was proposed with a SARSA-style reinforcement
-learner that decides which population and which rank supply each coordinate. A recent
-study~\citep{g2026deconstruction} showed that this learner brings no benefit over a uniform random choice at the same
-evaluation budget, and that the performance of MPHBS comes from the exchange step itself rather than from learning.
+learner that decides which population and which rank supply each coordinate. In our experiments a uniform random
+choice at the same evaluation budget performs as well as this learner (mean ranks \res{rank-RND} and
+\res{rank-MPHBS}, Section~\ref{sec:comparison}), which points to the exchange step itself, rather than the learning, as
+the component that matters.
 
 This paper starts from that observation and asks a different question: what limits the exchange? Our answer is that
 it depends on the coordinate system. Copying coordinate $d$ from one good solution and coordinate $d'$ from another is
@@ -185,9 +186,7 @@ classes~\citep{albetar2023mpa}.
 HBA and MPA have complementary behaviour, which makes them natural candidates for hybridisation. Al-Dhaifallah et al.\
 combined them in series, population-division and switching schemes for an electric-vehicle hosting-capacity
 problem~\citep{aldhaifallah2024mpahba}. MPHBS~\citep{flores2026mphbs} runs both on separate populations and couples them
-through a mediator that recombines their members dimension by dimension under the control of a SARSA learner;
-\citet{g2026deconstruction} showed that a budget-matched random mediator performs as well as the learner, so the gains
-come from the exchange itself.
+through a mediator that recombines their members dimension by dimension under the control of a SARSA learner.
 
 \subsection{Multi-population hybrids and information exchange}
 Talbi's taxonomy distinguishes low-level hybrids, which replace a component of one algorithm with another, from
@@ -205,9 +204,9 @@ Machine learning is increasingly used to control metaheuristics~\citep{talbi2021
 control~\citep{karafotias2015parameter} and adaptive operator selection with bandits~\citep{fialho2010bandit} were
 followed by reinforcement-learning controllers~\citep{drugan2019rl,song2024rlea}, for example Q-learning to switch
 between exploration and exploitation in grey wolf and whale optimisers~\citep{seyyedabbasi2021rl} or to set the
-parameters of the sine cosine algorithm~\citep{hamad2022qlesca}. MPHBS belongs to this line. Because its learned
-decisions did not outperform random ones at the same budget~\citep{g2026deconstruction}, EIG-MPHBS uses the simpler
-random mediator and changes the space in which the mediator works rather than the way it decides.
+parameters of the sine cosine algorithm~\citep{hamad2022qlesca}. MPHBS belongs to this line. EIG-MPHBS takes a
+different route: it uses a simple random mediator and changes the space in which the mediator works rather than the
+way it decides.
 
 \subsection{Rotation invariance}
 An algorithm is rotation invariant if its behaviour on $f(xQ)$ for an orthogonal $Q$ is the rotated image of its
@@ -399,8 +398,9 @@ Fig.~\ref{fig:architecture} shows the architecture of the method and Algorithm~\
 
 \subsection{Design choices}
 \paragraph{Random mediator} EIG-MPHBS uses the uniform random mediator of MPHBS-R rather than the SARSA learner, for
-two reasons. The learner brings no benefit at the same budget~\citep{g2026deconstruction}, and its value table is
-indexed by coordinates, whose meaning would change whenever the frame changes from one iteration to the next.
+two reasons. The learner brings no measurable benefit at the same budget (MPHBS and MPHBS-R have nearly identical
+mean ranks in Section~\ref{sec:comparison}), and its value table is indexed by coordinates, whose meaning would change
+whenever the frame changes from one iteration to the next.
 
 \paragraph{Frame probability} We set $q=0.5$. The axis frame remains useful on separable or nearly separable structure,
 where coordinate-wise exchange combines building blocks, and the FIR problems show such structure in part. Mixing the
@@ -547,7 +547,7 @@ Algorithm & Settings \\
 \midrule
 EIG-MPHBS & proposed; random mediator and eigen-frame exchange with probability $q=0.5$; $N=30$; $K,N_i,\rho$ as in
 Section~\ref{sec:params} \\
-MPHBS-R & MPHBS with a uniform random mediator at the same budget~\citep{g2026deconstruction}; same settings \\
+MPHBS-R & MPHBS with a uniform random mediator at the same budget (control); same settings \\
 MPHBS & SARSA mediator~\citep{flores2026mphbs}, learning rate $0.1$, discount $\gamma=0.3$; same settings \\
 HBA & \citet{hashim2022hba}; $N=30$, $\beta=6$, $C=2$ \\
 MPA & \citet{faramarzi2020mpa}; $N=30$, $P=0.5$, FADs $=0.2$ \\
