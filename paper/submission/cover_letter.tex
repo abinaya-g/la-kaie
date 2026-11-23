@@ -1,49 +1,52 @@
 \documentclass[11pt]{letter}
-\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage[a4paper,top=1.5cm,bottom=1.5cm,left=2.2cm,right=2.2cm]{geometry}
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{url}
-\signature{Abinaya G\\Department of Information Technology\\Saveetha Engineering College, Chennai, India\\\url{gabinaya@saveetha.ac.in}}
+\usepackage{enumitem}\setlist{itemsep=1pt,topsep=3pt}
+\signature{Abinaya G\\\url{gabinaya@saveetha.ac.in}}
 \address{Abinaya G\\Department of Information Technology\\Saveetha Engineering College\\Chennai, India}
 \date{\today}
 
 \begin{document}
-\begin{letter}{The Editors-in-Chief\\Journal of Heuristics}
+\begin{letter}{The Editors-in-Chief\\Computational Complexity}
 
 \opening{Dear Editors,}
 
 I submit the manuscript \emph{``Does the learning matter? A pre-registered deconstruction of SARSA-guided information
-exchange in the MPHBS hybrid metaheuristic''} for consideration as a research article in the \emph{Journal of
-Heuristics}.
+exchange in the MPHBS hybrid metaheuristic''} for consideration as a research article in \emph{Computational
+Complexity}, following the transfer recommendation I received for this work.
 
-Learned controllers are increasingly built into metaheuristics, and their benefit is usually demonstrated by an
-ablation against a random control. The manuscript examines when such an ablation measures the effect of learning, and
-applies the answer to a recent, fully documented case: MPHBS (Flores and Olivares, \emph{Knowledge-Based Systems} 352,
-2026), a Honey Badger--Marine Predators hybrid whose information exchange is guided by a SARSA value table. It is, in
-the tradition of this journal, a study of which components of a heuristic actually carry its performance.
+Learned controllers are increasingly built into search algorithms, and their benefit is usually claimed from an
+ablation against a random control. The manuscript asks a question that has not been answered formally: under what
+conditions does such an ablation measure the effect of learning, and what limits what a learned controller can learn
+from noisy search feedback? It answers that question with new theory and tests it on a recently published hybrid
+optimiser in which a SARSA value table guides information exchange between two subpopulations.
 
-The main contributions are:
+The novel contributions are:
 \begin{itemize}
-\item a decomposition of any learned-versus-control contrast into a learning, a budget and a state term, with the
-  conditions under which a control measures learning alone;
-\item a proof, checked against the authors' code and per-run results, that the published random control runs 21\%
-  (CEC2022) and 16\% (FIR) fewer iterations at the same budget and, in one configuration, changes a population memory;
-\item a pre-registered study with matched controls (14\,300 seed-paired runs on CEC2022 and eight FIR filter-design
-  problems), analysed with a script frozen before the campaign: a random mediator performs at least as well as SARSA,
-  while the exchange step and the memory handling carry the performance;
-\item an explanation from the update rule itself, with two propositions on credit assignment and on the noise floor of
-  the value table, confirmed by logged runs: on one benchmark there is no stable signal to learn, and on the other the
-  table ranks a stable signal in reverse;
-\item an extension to the 24 BBOB functions and a protocol for constructing and verifying matched controls.
+\item a new decomposition of any learned-versus-control contrast into a learning, a budget and a state term, with
+  necessary conditions under which a control measures learning alone;
+\item a proof, checked against the original code and per-run results, that the published random control runs 21\%
+  (CEC2022) and 16\% (FIR) fewer iterations at the same evaluation budget and, in one configuration, changes a
+  population memory, so the reported effect of learning is confounded;
+\item two new propositions derived from the update rule itself, one on credit assignment and one on the noise floor of
+  the value table, which bound what the controller can learn; logged runs confirm both: on one benchmark there is no
+  stable signal to learn, and on the other the table ranks a stable signal in reverse;
+\item the first pre-registered study of a learned component in a hybrid optimiser, with matched controls (14\,300
+  seed-paired runs on CEC2022 and eight FIR filter-design problems) analysed by a script frozen before the campaign: a
+  random mediator performs at least as well as SARSA, while the exchange step and the memory handling carry the
+  performance;
+\item an extension to the 24 BBOB functions and a general protocol for constructing and verifying matched controls.
 \end{itemize}
 
-The findings identify what drives the hybrid and give a checkable standard for evaluating learned components. All code, the frozen pre-registration, the raw runs and
+Together, these results give a checkable standard for evaluating learned components in search algorithms and explain,
+from first principles, when learning can and cannot pay off. All code, the frozen pre-registration, the raw runs and
 the analysis scripts are publicly available.
 
 The manuscript is original, has not been published previously, and is not under consideration for publication
-elsewhere. The author declares no competing interests, and the research received no specific funding.
-
-Thank you for considering this submission.
+elsewhere. The author declares no competing interests, and the research received no specific funding. Thank you for
+considering this submission.
 
 \closing{Yours sincerely,}
 
