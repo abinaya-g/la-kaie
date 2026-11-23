@@ -151,10 +151,19 @@ area usually show. Descriptive only: no hypothesis is added and H1/H2 are unchan
 - Reporting: the five main arms and these six together in the S3 tables and Friedman ranks. L-SHADE, CMA-ES and
   EA4eig stay in every table as the state-of-the-art references.
 
-## 10. Addendum (2026-11-10; prepared, NOT RUN): does the eigen frame transfer to other parent pairs?
+## 10. Addendum (2026-11-10, scope reduced 2026-11-23, before any of its runs): does the eigen frame transfer to other parent pairs?
 
-Status: implemented and tested (tests/eswa/test_exchange_hybrids.py), not run. A smoke test showed ~230-460 s per
-run, so the full design would take about 2.5 days; it is kept for a possible revision of the ESWA paper.
+Status: implemented and tested (tests/eswa/test_exchange_hybrids.py); launched 2026-11-23 on the reduced scope below.
+
+Scope change, 2026-11-23, before any campaign run: a timing test showed 230-460 s per run, so the original design
+(6 720 runs on four benchmarks) would take about 2.5 days. The campaign is restricted to BBOB D = 20 (24 instances)
+and FIR (8 instances), 3 840 runs, about 1.4 days. CEC2022 is dropped: it adds little to the question of coupled
+variables, which BBOB (separable and rotated versions of the same functions) addresses directly. Everything else
+below is unchanged except that "56 instances" now reads "32 instances".
+
+Disclosure: the timing test ran 2 runs per arm on BBOB f2 and f10 (output in a scratch directory, not part of the
+campaign). It showed a lower error for PD-EIG than PD-R on f10 and no difference between GW-EIG and GW-R. The
+campaign re-runs these instances with 30 runs, so those 2 runs enter no analysis.
 
 Question: is the gain of the eigen frame specific to HBA + MPA, or does it hold for the same dimension-wise exchange
 between other parent algorithms? Fixed before any run of these arms.
@@ -167,10 +176,11 @@ between other parent algorithms? Fixed before any run of these arms.
     WOA as published). Mediator settings as the domain's MPHBS configuration (B-C1 for CEC2022 and BBOB, A-C1 for FIR).
   - Best members are tracked as best-ever per population, so the global best never worsens (PSO, GWO and WOA replace
     their positions each generation).
-- q = 0.5 is taken unchanged from the MPHBS pilot; none of these arms was piloted, so all 56 instances are held out.
-- Benchmarks, budgets, 30 runs and seeds as Section 3 (paired with all other arms).
+- q = 0.5 is taken unchanged from the MPHBS pilot; none of these arms was piloted, so all 32 instances are held out.
+- Benchmarks BBOB D = 20 and FIR, budgets, 30 runs and seeds as Section 3 (paired with all other arms).
 - **H3 (confirmatory):** for each parent pair, the eigen variant outperforms its axis variant: median Vargha-Delaney A
-  over the 56 instances exceeds 0.5. One-sided Wilcoxon signed-rank test of A - 0.5 (scipy default zero handling;
-  Pratt and zero-split reported), Holm over the two pairs, alpha 0.05.
+  over the 32 instances exceeds 0.5. One-sided Wilcoxon signed-rank test of A - 0.5 (scipy default zero handling;
+  Pratt and zero-split reported), Holm over the two pairs, alpha 0.05. Analysis script: `scripts/eswa_xhyb_analysis.py`,
+  committed before the campaign finishes.
 - Secondary: per-instance paired Wilcoxon with Holm within benchmark; BBOB f10/f2 and f15/f3; exchange acceptance rates.
-- Launch: `bash scripts/eswa_campaign_xhyb.sh`. 6 720 runs, estimated 12-15 h with 11 workers.
+- Launch: `bash scripts/eswa_campaign_xhyb.sh` (BBOB-D20, then FIR). 3 840 runs, about 1.4 days with 11 workers.
