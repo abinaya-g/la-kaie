@@ -1,0 +1,123 @@
+{
+  "git_commit": "53653349d89ca49336304582369ea0218eeac1cd",
+  "design": "experiments/ESWA_EIGEN_CAMPAIGN.md Section 10",
+  "status": "confirmatory (H3), rotation and mechanism secondary",
+  "H3": {
+    "PSO+DE": {
+      "n": 32,
+      "median_A": 0.6927777777777777,
+      "mean_A": 0.7182986111111112,
+      "n_A_gt_half": 27,
+      "n_A_lt_half": 5,
+      "n_A_eq_half": 0,
+      "p_one_sided": 1.0937235266238645e-05,
+      "p_pratt": 1.0937235266238645e-05,
+      "p_zsplit": 1.0937235266238645e-05,
+      "inst_sig_eigen": 15,
+      "inst_sig_axis": 0,
+      "fe_equal_all": true,
+      "by_bench": {
+        "BBOB-D20": {
+          "median_A": 0.6216666666666666,
+          "n": 24,
+          "sig_eigen": 7,
+          "sig_axis": 0
+        },
+        "FIR": {
+          "median_A": 0.9488888888888889,
+          "n": 8,
+          "sig_eigen": 8,
+          "sig_axis": 0
+        }
+      },
+      "p_holm": 2.187447053247729e-05,
+      "supported": true
+    },
+    "GWO+WOA": {
+      "n": 32,
+      "median_A": 0.5244444444444445,
+      "mean_A": 0.5471527777777777,
+      "n_A_gt_half": 19,
+      "n_A_lt_half": 11,
+      "n_A_eq_half": 2,
+      "p_one_sided": 0.03931937835421969,
+      "p_pratt": 0.0401652798691595,
+      "p_zsplit": 0.04019503288336172,
+      "inst_sig_eigen": 4,
+      "inst_sig_axis": 0,
+      "fe_equal_all": true,
+      "by_bench": {
+        "BBOB-D20": {
+          "median_A": 0.5133333333333334,
+          "n": 24,
+          "sig_eigen": 4,
+          "sig_axis": 0
+        },
+        "FIR": {
+          "median_A": 0.6133333333333333,
+          "n": 8,
+          "sig_eigen": 0,
+          "sig_axis": 0
+        }
+      },
+      "p_holm": 0.03931937835421969,
+      "supported": true
+    }
+  },
+  "rotation_pairs": {
+    "ellipsoid f10/f2": {
+      "PD-R": {
+        "median_rotated": 1052.658803328814,
+        "median_separable": 1e-08
+      },
+      "PD-EIG": {
+        "median_rotated": 313.99569014749716,
+        "median_separable": 1e-08
+      },
+      "GW-R": {
+        "median_rotated": 4672.512434188801,
+        "median_separable": 0.00014891637672320712
+      },
+      "GW-EIG": {
+        "median_rotated": 3515.505502395839,
+        "median_separable": 0.0004970482648047891
+      }
+    },
+    "rastrigin f15/f3": {
+      "PD-R": {
+        "median_rotated": 63.83110559331354,
+        "median_separable": 0.4974795335466338
+      },
+      "PD-EIG": {
+        "median_rotated": 79.09893677489076,
+        "median_separable": 0.9949590570932862
+      },
+      "GW-R": {
+        "median_rotated": 131.6112646027018,
+        "median_separable": 6.964719907946002
+      },
+      "GW-EIG": {
+        "median_rotated": 127.42306051918419,
+        "median_separable": 11.939500077562577
+      }
+    }
+  },
+  "acceptance_first_quarter_median": {
+    "PD-R/f2": 0.04855195911413969,
+    "PD-R/f10": 0.18945201590005678,
+    "PD-R/f11": 0.003549119818285065,
+    "PD-R/f14": 0.08162975582055651,
+    "PD-EIG/f2": 0.027186257808063597,
+    "PD-EIG/f10": 0.09355479840999431,
+    "PD-EIG/f11": 0.004045996592844974,
+    "PD-EIG/f14": 0.039146791595684266,
+    "GW-R/f2": 0.023601646791595682,
+    "GW-R/f10": 0.05373367404883589,
+    "GW-R/f11": 0.01465786484951732,
+    "GW-R/f14": 0.025411697898921067,
+    "GW-EIG/f2": 0.02115275411697899,
+    "GW-EIG/f10": 0.05068143100511073,
+    "GW-EIG/f11": 0.019023282226007947,
+    "GW-EIG/f14": 0.020833333333333332
+  }
+}

@@ -1,0 +1,191 @@
+%% =====================================================================
+\section{A rotation-invariant exchange}
+\label{sec:eigen}
+
+\subsection{Why the exchange depends on the coordinate system}
+Consider a separable objective $f(x)=\sum_d g_d(x_d)$. If two good solutions $a$ and $b$ are good in different coordinates,
+the candidate that takes the good coordinates of each is better than both: coordinate-wise exchange combines building
+blocks. Now rotate the problem, $f_Q(x)=f(xQ^\top)$ with an orthogonal $Q$. The building blocks are now the projections onto
+the columns of $Q$, and copying raw coordinates mixes them. For an ill-conditioned rotated function such as the ellipsoid,
+even two nearby good solutions can produce, by coordinate-wise exchange, a candidate that leaves the narrow valley in which
+both lie. Such candidates are rejected, the exchange stalls, and the hybrid loses the channel through which its populations
+cooperate. The populations themselves carry the information needed to correct this: late in the search their members are
+spread along the valley they occupy, so the principal axes of their covariance approximate the directions in which the
+objective varies slowly or quickly.
+
+\subsection{The eigen-frame exchange}
+At the start of Phase~2, with probability $q$, the mediator computes the sample covariance of the pooled populations and its
+eigendecomposition,
+\begin{equation}
+C = \mathrm{cov}\!\begin{pmatrix} X^H \\ X^M \end{pmatrix} = B\Lambda B^\top,
+\label{eq:cov}
+\end{equation}
+with an orthonormal eigenvector matrix $B$ whose columns are ordered by eigenvalue. All operations of the mediator in this
+iteration are then performed on the eigen coordinates $z=xB$ (Algorithm~\ref{alg:mediator}, lines~\ref{line:frame}--\ref{line:policy}):
+the tensor $R$ holds the projected subsets, candidates are assembled coordinate-wise in $z$, the proxy
+score~\eqref{eq:proxy} is computed on eigen coordinates, the selected candidate is mapped back and clipped,
+$x'=\mathrm{clip}(z'B^\top)$, and, if accepted, its eigen coordinates are recomputed from the clipped point so that the
+current vector always corresponds to a feasible evaluated point. With probability $1-q$ the iteration uses the original axes
+($B=I$) and is identical to the random-mediator hybrid. We call the hybrid with $q=0.5$ and the uniform policy
+\emph{EIG-MPHBS}. Fig.~\ref{fig:architecture} shows the architecture.
+
+\begin{figure}[!htbp]
+\centering
+\input{figures/fig_architecture_tikz.tex}
+\caption{Architecture of the eigen-frame hybrid. Left: one iteration. Right: the eigen-frame exchange (Phase~2). Blue boxes
+are the only additions to the random-mediator hybrid; they use no function evaluations.}
+\label{fig:architecture}
+\end{figure}
+
+\paragraph{Design choices} The exchange uses the uniform policy: the learner brings no measurable benefit at the same budget
+(Study~I), and its table is indexed by coordinates whose meaning would change with the frame (Section~\ref{sec:theory}). The
+frame probability is $q=0.5$: the axis frame remains useful on separable structure, where coordinate-wise exchange combines
+building blocks, and mixing the two keeps both kinds of exchange. The value $q=0.5$ was chosen over $q=1$ in a 10-run pilot
+on 32 instances (BBOB f1, f3, f8, f10, f12, f15, f16, f21; CEC2022 $D=20$; FIR), reported in Section~\ref{sec:ablation};
+these instances are excluded from the confirmatory test of Study~II. Rotation can move a recombined point outside the box;
+we clip after mapping back, which leaves the evaluation budget unchanged.
+
+\subsection{Properties}
+\begin{proposition}[Rotation invariance of the exchange]
+\label{prop:invariance}
+Let $Q$ be an orthogonal matrix and $\tilde f(y)=f(yQ^\top)$. Suppose the populations, subsets and global best of the rotated
+run are the rotated images $\tilde X=XQ$ of those of the original run, the pooled covariance has distinct eigenvalues, the
+same random numbers are drawn, and no clipping occurs. Then the eigen-frame exchange produces, in every episode, the
+candidate $\tilde x'=x'Q$, with the same objective value and the same acceptance decision.
+\end{proposition}
+\begin{proof}
+The pooled covariance of the rotated populations is $\tilde C=Q^\top CQ$, which has the same eigenvalues as $C$ and, since
+they are distinct, eigenvectors $\tilde B=Q^\top BS$ with $S$ a diagonal matrix of signs, in the same order. The eigen
+coordinates of a rotated point are therefore $\tilde z=xQ\,Q^\top BS=zS$: each coordinate equals the original one up to a
+fixed sign. Ranks depend only on objective values, which are equal because $\tilde f(xQ)=f(x)$. Assembling a candidate by
+copying coordinate $d$ from a stored solution commutes with multiplication by $S$, so $\tilde z'=z'S$. The terms of the proxy
+score~\eqref{eq:proxy} are a mean rank, a mean of absolute coordinate differences and a Euclidean norm, all unchanged by
+sign flips, so the same candidate is selected. Mapping back gives $\tilde x'=\tilde z'\tilde B^\top=z'SS^\top B^\top Q=x'Q$,
+whose value is $\tilde f(x'Q)=f(x')$, and the acceptance rule depends only on objective values.
+\end{proof}
+
+\begin{remark}
+The axis-frame exchange ($B=I$) has no such property. Proposition~\ref{prop:invariance} concerns the exchange step only:
+the native moves of Phase~1 are coordinate-wise, and so is clipping, so the hybrid as a whole is not rotation invariant. A
+unit test checks the invariance of the eigen coordinates numerically.
+\end{remark}
+
+\begin{proposition}[No extra evaluations]
+\label{prop:cost}
+In every iteration the eigen-frame hybrid performs exactly the same number of FEs as the random-mediator hybrid, $3N+1+E$.
+The additional arithmetic is $O(ND^2+D^3)$ for the covariance and its eigendecomposition and $O(D^2)$ per episode for the
+projections.
+\end{proposition}
+\begin{proof}
+The frame is computed from points already evaluated, and the mediator evaluates one start point and one candidate per
+episode in either frame. The covariance of $2N$ points costs $O(ND^2)$, the symmetric eigendecomposition $O(D^3)$, and each
+projection of a $D$-vector $O(D^2)$.
+\end{proof}
+
+%% =====================================================================
+\section{Design of the studies}
+\label{sec:design}
+
+The three studies share one framework: a Python implementation that counts every FE and in which all variants are switches
+in one code path. Runs with the same benchmark, instance and run number share their seed across arms, so all comparisons are
+seed-paired. Table~\ref{tab:studies} summarises the studies; they were designed and frozen one after the other, and
+analyses added after a freeze are labelled post hoc or exploratory.
+
+\begin{table}[!htbp]
+\centering
+\caption{The three studies. Pre-registered means that the hypotheses, run counts, statistics and decision rule were frozen
+in a public repository before the runs; the confirmatory analysis script of Study~III was committed before its runs
+finished.}
+\label{tab:studies}
+\footnotesize
+\begin{tabular}{p{0.8cm}p{3.1cm}p{3.4cm}p{3.3cm}p{2.6cm}}
+\toprule
+Study & Question & Confirmatory hypotheses & Benchmarks, runs & Status \\
+\midrule
+I & Does learning matter? (Q1, Q2) & L1 learning; L2 published control; L3 mediator; L4 loop & CEC2022 $D=20$ (12), FIR (8); 50--100 runs per arm & pre-registered; BBOB extension and theory check exploratory \\
+II & Does the eigen frame help? (Q3) & F1 vs random mediator; F2 vs learned hybrid (28 held-out instances) & CEC2022 $D=10,20$, BBOB $D=20$, FIR (56); 30 runs per algorithm & design document before confirmatory runs; held-out set \\
+III & Does it transfer? (Q3) & T1 eigen vs axis for two parent pairs & BBOB $D=20$ (24), FIR (8); 30 runs per arm & pre-registered addendum; analysis script frozen \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Benchmarks}
+\begin{itemize}
+\item CEC2022~\citep{kumar2021cec2022}, F1--F12 at $D=10$ and $D=20$, with the official code; budget $2\times10^5$ FEs.
+\item BBOB~\citep{hansen2009bbob}, f1--f24 at $D=20$ (Study~I extension also $D=10$), with $10{,}000D$ or $2\times10^5$ FEs as
+stated, and instance $((r-1)\bmod 15)+1$ in run $r$. It contains separable and rotated versions of the same functions, which
+allows a direct test of rotation dependence.
+\item Eight FIR filter-design problems ($D=31$) introduced with MPHBS~\citep{flores2026mphbs}: low-pass, high-pass,
+band-pass and band-stop filters of order 30, each in an easier and a harder variant. The decision vector is the impulse
+response $h\in[-1,1]^{31}$ and the objective is
+\begin{equation}
+F(h) = W_p\,\frac{1}{|P|}\sum_{n\in P}\bigl(|H(\omega_n)|-1\bigr)^2 + W_s\,\frac{1}{|S|}\sum_{n\in S}|H(\omega_n)|^2,
+\label{eq:fir}
+\end{equation}
+where $H$ is the 2048-point discrete Fourier transform of $h$, $P$ and $S$ are the pass- and stop-band grid points, $W_p=1$
+and $W_s\in\{100,120\}$. The budget is $1.5\times10^5$ FEs.
+\end{itemize}
+The outcome is the final error $f(x_\mathrm{best})-f^\star$ (the value $F$ on FIR, whose optimum is unknown), floored at
+$10^{-8}$.
+
+\subsection{Study I: arms and statistics}
+\label{sec:armsI}
+All arms use the configuration of the benchmark (Section~\ref{sec:hybrid}) and are listed in Table~\ref{tab:arms}.
+\textbf{SARSA} is MPHBS unchanged. \textbf{RND-FAIR} draws $(c_d,n_d)$ uniformly and never reads or updates $Q$; everything
+else, including the FE cost, is identical (budget- and state-matched). \textbf{RND-SYNC} (CEC2022 only) adds the control's
+memory update at zero cost; by Proposition~\ref{prop:memory} it would equal RND-FAIR on FIR. \textbf{RND-AUTH} ports the
+published control, including its extra evaluations. \textbf{SKEL} is the loop without Phase~2, and \textbf{MPHB} the
+published backbone without mediator. The hypotheses are L1 (SARSA vs RND-FAIR: learning), L2a (RND-SYNC, or RND-FAIR on FIR,
+vs RND-AUTH: budget of the control), L2b (RND-FAIR vs RND-SYNC on CEC2022: memory), L3 (SARSA vs SKEL: mediator) and L4
+(SKEL vs MPHB: loop). L5--L8 (escape rate on F10, number of episodes, mediator components, memory update in SARSA) are
+exploratory. The H1 pair was run 100 times per instance, every other arm 50 times.
+
+\input{generated/tab_arms.tex}
+
+For instance $j$ with $n$ seed pairs $(a_s,b_s)$ of anchor and comparator outcomes we compute the paired win probability
+$\hat w_j=\frac1n\sum_s(\mathbb 1[a_s<b_s-\tau]+\frac12\mathbb 1[|a_s-b_s|\le\tau])$ with $\tau=10^{-12}$, the median relative
+difference $\hat\delta_j=\mathrm{median}_s(b_s-a_s)/|b_s|$ (descriptive), and a two-sided Wilcoxon signed-rank
+test~\citep{wilcoxon1945}, Holm-adjusted~\citep{holm1979} within each (hypothesis, benchmark) family. The domain-level effect
+is $\bar W=\frac1J\sum_j\hat w_j$ with a 95\% percentile bootstrap interval~\citep{efron1979bootstrap}. The verdict is the
+first that applies: \emph{mixed} if instances are Holm-significant in both directions; \emph{anchor superior} if some are in
+favour of the anchor and the interval lies above 0.5; \emph{comparator superior} analogously; \emph{practically equivalent} if
+none is significant and the interval lies in $[0.44,0.56]$, the negligible band of Vargha and Delaney~\citep{vargha2000};
+otherwise \emph{inconclusive}.
+
+\subsection{Study II: algorithms and statistics}
+The hybrid family comprises EIG-MPHBS ($q=0.5$), MPHBS-R (the same code with the axis frame; this isolates the frame) and
+MPHBS. HBA and MPA, ported from the reference code and validated against published per-run results, PSO, DE, GWO and WOA with
+the standard settings of their publications, L-SHADE~\citep{tanabe2014lshade} and IPOP-CMA-ES~\citep{hansen2001cma,
+auger2005ipop,hansen2019pycma} complete the eleven algorithms; all use the same budget. No algorithm is tuned beyond the
+choice of $q$. Before any confirmatory run a design document fixed the algorithms, the benchmarks and two hypotheses on 28
+held-out instances not used in any pilot (CEC2022 $D=10$ F1--F12; BBOB f2, f4--f7, f9, f11, f13, f14, f17--f20, f22--f24):
+\textbf{F1} (EIG-MPHBS vs MPHBS-R, isolating the frame) and \textbf{F2} (vs MPHBS). For each instance the Vargha--Delaney
+effect $A=P(e_1<e_2)+\frac12P(e_1=e_2)$ is computed over all $30\times30$ run pairs ($A>0.5$ favours the first algorithm), and
+the median $A$ over instances is tested with a one-sided Wilcoxon signed-rank test of $A-0.5$, Holm over F1 and F2 at
+$\alpha=0.05$. All other analyses of Study~II are secondary. The six classical algorithms were added after the main analysis
+and are reported descriptively.
+
+\subsection{Study III: transfer}
+\label{sec:designIII}
+The mediator and the eigen frame do not depend on HBA and MPA. In Study~III the two populations run the native moves of
+another parent pair: PSO and DE (arms PD-R, PD-EIG) or GWO and WOA (GW-R, GW-EIG), with the axis frame (R) or the eigen
+frame with $q=0.5$ (EIG). Everything else is common: the uniform policy, $N=30$, the mediator settings of the benchmark, no
+FAD stage and no memory. \textbf{T1}: for each pair, the median $A$ of the eigen arm against its axis twin over the 32
+instances (BBOB $D=20$ f1--f24 and FIR cases 1--8) exceeds 0.5, tested as in Study~II with Holm over the two pairs; per
+instance $A$ uses all $30\times30$ run pairs. Seeds are paired with the other studies. The addendum was frozen before any of
+its runs. Its scope was reduced, before any run, from three benchmarks to two because of compute (the CEC2022 instances were
+dropped), and a timing test of 2 runs per arm on BBOB f2 and f10, recorded in the addendum, preceded the campaign. The
+analysis script was committed before the campaign finished.
+
+\subsection{Execution and validation}
+\label{sec:execution}
+Study~I ran once on GitHub-hosted Linux runners in a pinned environment after the full test suite had passed; Studies~II and
+III ran on a 12-core laptop, one run per core, with every run seeded independently. The port's MPHBS reproduces the published
+FE totals exactly and their published run distributions (the one known exception, a lower escape rate on CEC2022 F10, is
+examined in Section~\ref{sec:resI}). Unit tests establish that (i) the variant code with default settings is bit-identical to
+the validated MPHBS port; (ii) every arm's FE total matches Table~\ref{tab:arms}; (iii) at a fixed number of iterations the
+published control produces trajectories bit-identical to RND-FAIR under the FIR configuration and to RND-SYNC under the
+CEC2022 configuration, confirming Proposition~\ref{prop:memory}; (iv) removing the global-best copy does not change any
+trajectory; (v) the eigen-frame and axis-frame hybrids use identical FE counts on every paired run, as
+Proposition~\ref{prop:cost} states, and in Study~III on every instance of every pair. All runs of Study~I completed with the
+expected FE totals; re-running its analysis on a second machine reproduced all verdicts, effect sizes and intervals.

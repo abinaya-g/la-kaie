@@ -1,0 +1,389 @@
+%% =====================================================================
+\section{Introduction}
+\label{sec:intro}
+
+Many decision problems in engineering end in a continuous black-box optimisation problem: the coefficients of a digital
+filter evaluated through its frequency response, the parameters of a controller evaluated by simulation, or the
+hyper-parameters of a model evaluated by cross-validation. Population-based metaheuristics are a common choice for them
+because they need only objective values and are easy to embed in a pipeline. No single metaheuristic performs best on all
+problems~\citep{wolpert1997nfl}, so hybridisation is one of the most popular design strategies~\citep{talbi2002taxonomy,
+blum2011hybrid}. In a multi-population hybrid, algorithms with complementary behaviour run on separate populations and
+exchange information~\citep{alba2002parallel,ma2019multipop}. How this exchange is designed largely determines whether
+the hybrid is better than its parts.
+
+A recent design, MPHBS~\citep{flores2026mphbs}, combines the Honey Badger Algorithm (HBA)~\citep{hashim2022hba} and the
+Marine Predators Algorithm (MPA)~\citep{faramarzi2020mpa}. After both populations have moved, a \emph{mediator} assembles
+new candidates dimension by dimension from the best members of both populations. A reinforcement-learning controller,
+a SARSA value table, decides which population and which rank supplies each coordinate. This design raises three questions
+that apply well beyond one algorithm, because learned controllers and exchange operators are now common components of
+metaheuristics~\citep{talbi2021ml,drugan2019rl,song2024rlea}.
+
+\begin{description}
+\item[Q1: What does a control measure?] A learned controller is usually justified by an ablation against a random control.
+Under which conditions does this contrast measure learning, and not something else that differs between the two variants?
+\item[Q2: What can the controller learn?] Given the update rule and the reward the mediator produces, how much can a value
+table learn about which choices are good?
+\item[Q3: What carries the performance, and can it be improved?] If the exchange step, not the learning, is the
+effective component, what limits it?
+\end{description}
+
+We answer all three, in this order, with theory and three studies on a common platform.
+
+\paragraph{Contributions}
+\begin{enumerate}
+\item \emph{A decomposition of learned-versus-control contrasts} into a learning, a budget and a state term, with
+necessary conditions under which a control measures learning alone, a protocol to construct and verify such controls
+(Section~\ref{sec:control}). Applied to the published control of the hybrid, the decomposition reveals that it runs
+21\% (CEC2022) and 16\% (FIR) fewer iterations at the same evaluation budget and, in one configuration, changes a
+population memory.
+\item \emph{Two propositions on the value table} derived from its update rule: a credit-assignment property (only the
+provenance of the current vector is updated, never the choices of a rejected candidate) and a noise floor (each entry is
+an exponentially weighted average over $1/\beta$ updates). A logged-run check confirms both (Section~\ref{sec:theory}).
+\item \emph{A pre-registered study with matched controls} (Study~I, \res{A-runs-total} seed-paired runs on CEC2022 and eight
+FIR filter-design problems, plus an exploratory BBOB extension): random choice performs at least as well as the learned
+controller; the exchange step and the memory handling carry the performance.
+\item \emph{A rotation-invariant exchange} that performs the recombination in the eigenvector frame of the pooled
+populations (Section~\ref{sec:eigen}), with a proof of invariance and of zero extra evaluations, and an evaluation on 56
+instances against ten algorithms (Study~II, \res{E-runs-total} runs).
+\item \emph{A pre-registered transfer study} (Study~III, \res{X-runs} runs) showing whether the same exchange helps two other
+parent pairs, particle swarm with differential evolution and grey wolf with whale optimisation, not only the pair it was
+developed on.
+\end{enumerate}
+
+The results are positive and bounded. The learned controller adds nothing measurable over uniform choices at an equal
+budget; the eigen-frame exchange improves the hybrid, strongly on coupled unimodal problems and not on rotated
+multimodal ones; and the transfer is large for one parent pair and small for the other. L-SHADE, CMA-ES and the CEC2022
+entry EA4eig remain stronger on most instances. We report both sides.
+
+Section~\ref{sec:related} reviews related work, Section~\ref{sec:hybrid} describes the hybrid and its mediator,
+Section~\ref{sec:control} treats matched controls, Section~\ref{sec:theory} the value table,
+Section~\ref{sec:eigen} the eigen-frame exchange, Section~\ref{sec:design} the design of the three studies,
+Section~\ref{sec:results} the results, and Sections~\ref{sec:discussion} and~\ref{sec:conclusion} discuss and conclude.
+
+%% =====================================================================
+\section{Related work}
+\label{sec:related}
+
+\paragraph{Parent algorithms and hybrids} HBA~\citep{hashim2022hba} moves each agent around the best agent with a step
+scaled by a smell intensity and a decreasing density factor; many improved variants and hybrids exist~\citep{hassan2024hba}.
+MPA~\citep{faramarzi2020mpa} uses three phases with Brownian and L\'evy motion, a marine memory that keeps the better of the
+old and new position of each agent, and a fish-aggregating-device (FAD) perturbation; reviews list its variants and
+limitations~\citep{albetar2023mpa}. HBA and MPA have been combined in series and switching schemes for an
+electric-vehicle hosting problem~\citep{aldhaifallah2024mpahba}, and MPHBS runs them on separate populations coupled by a
+mediator~\citep{flores2026mphbs}. Talbi's taxonomy distinguishes relay from teamwork and low-level from high-level
+hybrids~\citep{talbi2002taxonomy,blum2011hybrid}; the mediator is a high-level teamwork hybrid whose exchange builds new
+individuals from coordinates of members of both populations, so it acts like a multi-parent crossover between populations
+and inherits the properties of coordinate-wise crossover. Population diversity, which the exchange directly affects, is a
+central quantity for the balance between exploration and exploitation~\citep{crepinsek2013exploration,squillero2016diversity,
+morales2020balance}.
+
+\paragraph{Learning-based control} Parameter control~\citep{karafotias2015parameter} and adaptive operator selection with
+bandits~\citep{fialho2010bandit} were followed by reinforcement-learning controllers~\citep{drugan2019rl,song2024rlea}, for
+example Q-learning to switch between exploration and exploitation in grey wolf and whale optimisers~\citep{seyyedabbasi2021rl}
+or to set the parameters of the sine cosine algorithm~\citep{hamad2022qlesca}; \citet{talbi2021ml} gives a taxonomy. The
+difficulty of credit assignment in adaptive operator selection is well known~\citep{fialho2010bandit}. We contribute a
+precise statement for one widely used rule and a test of whether the benefit of learning is measured correctly.
+
+\paragraph{Experimental methodology} Critical analyses of metaheuristics call for matched baselines, appropriate
+statistics and documentation of the choices made~\citep{derrac2011tutorial,demsar2006}. Effect sizes such as the
+Vargha--Delaney statistic~\citep{vargha2000} complement significance tests. We add a formal condition under which a control
+isolates a learned component, and we pre-register the confirmatory analyses.
+
+\paragraph{Rotation invariance and eigenvector recombination} An algorithm is rotation invariant if its behaviour on
+$f(xQ)$ for an orthogonal $Q$ is the rotated image of its behaviour on $f(x)$. \citet{salomon1996rotation} showed that
+genetic algorithms with coordinate-wise operators lose much of their performance when a separable function is rotated;
+the same applies to binomial crossover in DE. CMA-ES adapts a full covariance matrix and is rotation invariant by
+design~\citep{hansen2001cma}. Benchmark suites include rotated functions~\citep{hansen2009bbob,hansen2021coco,
+kumar2021cec2022}, and BBOB contains separable and rotated versions of the same functions. Table~\ref{tab:related}
+summarises operators that recombine solutions in a coordinate system derived from the population:
+\citet{guo2015eigen} perform DE crossover in the eigenvector frame of the population covariance, CoBiDE~\citep{wang2014cobide}
+uses covariance matrix learning, \citet{civicioglu2018aplus} use a QR-based rotation, EA4eig~\citep{bujok2022ea4eig}
+applies eigen crossover inside four cooperating algorithms, and in evolutionary multitasking knowledge is transferred
+between task populations in aligned eigen-subspaces~\citep{tang2021regularized,tang2022adaptive}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Recombination in population-derived coordinate systems (from the cited papers' descriptions).}
+\label{tab:related}
+\footnotesize
+\begin{tabular}{p{3.4cm}p{2.8cm}p{2.5cm}p{5.8cm}}
+\toprule
+Work & Host algorithm & Populations & Use of the eigen / rotated frame \\
+\midrule
+\citet{guo2015eigen} & DE & one & crossover in the eigenvector frame of the population, with a probability \\
+CoBiDE~\citep{wang2014cobide} & DE & one & crossover in the frame of the learned covariance \\
+A+~\citep{civicioglu2018aplus} & evolutionary search & one & QR-based rotation-invariant crossover \\
+EA4eig~\citep{bujok2022ea4eig} & CMA-ES, CoBiDE, jSO, IDE & four cooperating & eigen crossover inside each algorithm \\
+\citet{tang2021regularized} & multitask EA & one per task & inter-task transfer in aligned eigen-subspaces \\
+\citet{tang2022adaptive} & multifactorial EA & one per task & inter-task transfer in a frame from both populations' eigenvectors \\
+\midrule
+This work & two heterogeneous populations (HBA+MPA; PSO+DE; GWO+WOA) & two & dimension-wise inter-population exchange in the frame of the pooled covariance, with probability $q$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Gap} Exchanging information between populations in an eigen frame of their joint distribution is known; the
+closest precedents are the inter-task transfers of \citet{tang2021regularized,tang2022adaptive}. We found no study that
+applies it to the dimension-wise exchange of hybrids of this kind (title, abstract and keyword search of Scopus,
+28~October~2026), analyses how such mediators depend on the coordinate system, or asks whether a learned controller of the
+exchange is needed at all. We do not claim a new operator. The contributions are the identification of what a control
+measures, the limits of the value table, the finding that the coordinate dependence of the exchange is a removable
+weakness, and the evidence that the remedy transfers.
+
+%% =====================================================================
+\section{The two-population hybrid and its mediator}
+\label{sec:hybrid}
+
+\paragraph{Notation} We minimise $f:\Omega\to\mathbb{R}$ over a box $\Omega=[\ell,u]^D$; points are row vectors. The hybrid
+keeps two populations $X^H,X^M\in\mathbb{R}^{N\times D}$ with fitness values $f^H_i,f^M_i$, their best members $p^H,p^M$,
+and the global best $p^\star$ with value $f^\star$. The second population keeps a memory $(\tilde X^M,\tilde f^M)$.
+$t=0,\dots,T-1$ is the iteration, $\mathrm{clip}$ the projection onto $\Omega$ and $U(a,b)$ a uniform random number.
+
+\paragraph{Phase 1: native moves} Each population moves by the rule of its algorithm (HBA digging and honey moves; MPA
+Brownian and L\'evy phases~\citep{hashim2022hba,faramarzi2020mpa}), costing $2N$ function evaluations (FEs). After
+evaluation, \emph{memory saving} restores any MPA agent whose previous position was better and then overwrites the memory
+with the current population:
+\begin{equation}
+x^M_i \leftarrow \begin{cases}\tilde x^M_i & \tilde f^M_i < f(x^M_i),\\ x^M_i & \text{otherwise},\end{cases}
+\qquad (\tilde X^M,\tilde f^M)\leftarrow (X^M, f^M).
+\label{eq:memory}
+\end{equation}
+A FAD stage perturbs the MPA population, evaluates every candidate ($N$ FEs) and accepts greedily; it is placed before
+Phase~2 on CEC2022 and BBOB and after it on FIR, as in the original design.
+
+\paragraph{Phase 2: the mediator} Each population contributes $N_\mathrm{sub}=\min(N,\max(5,\mathrm{round}(\rho N)))$
+members, half of them the best and the rest at random, sorted by fitness; the subsets form a tensor
+$R\in\mathbb{R}^{N_\mathrm{sub}\times D\times 2}$ whose entry $R_{n,d,c}$ is coordinate $d$ of the rank-$n$ member of source
+$c\in\{H,M\}$. Starting from the vector $v=p^\star$ (one FE), the mediator runs $E=N_\mathrm{sub}N_i$ episodes. The
+dimensions are cut into blocks of $b=\lceil D/5\rceil$ visited in random order. In episode $e$ with active block $A_e$,
+$K$ candidates are assembled: candidate $k$ copies $v$ and sets, for each $d\in A_e$, $v'_d=R_{n_d,d,c_d}$ for a source
+$c_d$ and rank $n_d$ chosen by a \emph{policy}. A proxy score that costs no evaluation,
+\begin{equation}
+s(v') = -w_\mathrm{rank}\,\overline{(n_d+1)}_{d\in A_e} + w_\mathrm{nov}\,\overline{|v'_d-v_d|}_{d\in A_e}
+        - w_\mathrm{best}\,\|v'_{A_e}-p^\star_{A_e}\|_2,
+\label{eq:proxy}
+\end{equation}
+selects one candidate, which is the only one evaluated. An improving candidate is accepted, and a worse one with
+probability
+\begin{equation}
+p_e = \min\Bigl(0.25,\ 0.2\,(1-g_t)^2\bigl(0.35+0.65(1-\lambda_e)\bigr)\exp\bigl(-4\max(0,\Delta_e)\bigr)\Bigr),
+\label{eq:accept}
+\end{equation}
+with $g_t=t/(T-1)$, $\lambda_e=(e-1)/(E-1)$ and $\Delta_e=(f(v')-f(v))/(|f(v)|+\epsilon)$. An accepted candidate replaces
+the worst member of each subset that it improves. One iteration costs $3N+1+E$ FEs. Algorithm~\ref{alg:mediator} gives
+the mediator in a form that covers all variants of this paper.
+
+\paragraph{The policy} In MPHBS the choice of $(c_d,n_d)$ is made by five policies (greedy, $\varepsilon$-greedy,
+uniform, second-best, look-ahead) over a value table $Q\in\mathbb{R}^{D\times N_\mathrm{sub}\times 2}$. The reward of an
+episode is $r_e=\mathrm{sign}(f(v)-f(v'))$ and, for every $d\in A_e$, the table is updated by the SARSA rule
+\begin{equation}
+Q_{d,n_d,c_d} \leftarrow Q_{d,n_d,c_d} + \alpha\bigl(r_e + \gamma\,Q_{d,n'_d,c'_d} - Q_{d,n_d,c_d}\bigr),
+\label{eq:sarsa}
+\end{equation}
+with $\alpha=0.1$ and $\gamma=0.3$, where $(n'_d,c'_d)$ is the choice in $v'$ if it was accepted and $(n_d,c_d)$ otherwise.
+The \emph{random mediator} draws $(c_d,n_d)$ uniformly and never reads or updates $Q$.
+
+\paragraph{Configurations} With $N=30$, the configuration of the original study is B-C1 on CEC2022 and BBOB ($K=7$,
+$N_i=3$, $\rho=0.25$, $N_\mathrm{sub}=8$, $E=24$, FAD before Phase~2) and A-C1 on FIR ($K=3$, $N_i=9$, $E=72$, FAD after
+Phase~2), $w_\mathrm{rank}=1$, $w_\mathrm{nov}=0.3$, $w_\mathrm{best}=0.05$~\citep{flores2026mphbs}. We keep these values
+in every study and tune nothing. Their authors compare the learned hybrid with a random-assembly control (the ``mirror'').
+Re-analysing their 30 common-seed runs with paired Wilcoxon tests and Holm correction, the learned variant is
+significantly better than the mirror on \res{A-auth-CEC2022-vsRANDOM-sigS} of \res{A-auth-CEC2022-n} CEC2022 functions and
+worse on \res{A-auth-CEC2022-vsRANDOM-sigC}, and not significantly different on any of the \res{A-auth-FIR-n} FIR cases.
+
+\begin{algorithm}[!htbp]
+\caption{Phase 2 (mediator) with policy $\pi\in\{\text{SARSA},\text{uniform}\}$ and frame probability $q$ ($q=0$: axis frame).}
+\label{alg:mediator}
+\small
+\begin{algorithmic}[1]
+\Require populations $X^H,X^M$, global best $p^\star$, iteration $t$, policy $\pi$, frame probability $q$
+\State \textbf{if} $U(0,1)<q$ \textbf{then} $B\gets$ eigenvectors of $\mathrm{cov}([X^H;X^M])$ \textbf{else} $B\gets I$
+\Comment{0 FEs; Section~\ref{sec:eigen}} \label{line:frame}
+\State draw ranked subsets $S^H,S^M$; $R\gets(S^HB,S^MB)$; $z\gets p^\star B$; $f_z\gets f(p^\star)$ \Comment{1 FE}
+\For{$e=1,\dots,E$}
+  \State $A_e\gets$ next block of dimensions
+  \State for $k=1..K$: $z^{(k)}\gets z$; for $d\in A_e$ choose $(c_d,n_d)$ by $\pi$ (SARSA: over $Q_{d,\cdot,\cdot}$);
+    $z^{(k)}_d\gets R_{n_d,d,c_d}$ \label{line:policy}
+  \State $z'\gets\arg\max_k s(z^{(k)})$ \eqref{eq:proxy}; $x'\gets\mathrm{clip}(z'B^\top)$; $f'\gets f(x')$ \Comment{1 FE}
+  \State accept if $f'<f_z$, else with probability $p_e$ \eqref{eq:accept}
+  \State \textbf{if} SARSA \textbf{then} update $Q$ on $A_e$ by \eqref{eq:sarsa} \label{line:sarsa}
+  \If{accepted} $z\gets x'B$, $f_z\gets f'$; replace the worst subset members that $x'$ improves\EndIf
+  \If{$f'<f^\star$} $p^\star\gets x'$; copy $x'$ into a random row of $S^H$ and $S^M$\EndIf
+\EndFor
+\State write $S^H,S^M$ back into $X^H,X^M$; update $p^H,p^M,p^\star$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{figure}[!htbp]
+\centering
+\resizebox{0.66\textwidth}{!}{\input{figures/fig1_loop.tex}}
+\caption{One iteration of the hybrid with its evaluation cost ($N$ agents per population, $E$ mediator episodes). The dashed
+block exists only in the published random control. The arms of Study~I replace the mediator's policy (RND-FAIR), remove
+Phase~2 (SKEL), or refresh the memory after Phase~2 at no cost (RND-SYNC).}
+\label{fig:loop}
+\end{figure}
+
+%% =====================================================================
+\section{What a control measures}
+\label{sec:control}
+
+\paragraph{Definition} Let $\mathcal A$ be an algorithm whose decisions in a component $\mathcal C$ are taken by a learned
+policy, and $\mathcal A_0$ the same algorithm with $\mathcal C$'s decisions drawn from a reference distribution.
+$\mathcal A_0$ is \emph{budget-matched} if both variants spend the same number of FEs in every iteration, so that they run
+the same number of iterations under the same budget, and \emph{state-matched} if, given the same decisions, both perform
+the same updates of every state variable outside the learned component (populations, memories, archives, parameters).
+
+Write $Y(\pi,T,U)$ for the final error of a run that takes the component's decisions with policy $\pi$, runs $T$ iterations
+and updates its state with rule $U$, and let a control use the reference policy $\pi_0$, $T_0$ iterations and rule $U_0$.
+
+\begin{proposition}[What a control measures]
+\label{prop:identify}
+The contrast between the learned variant and a control decomposes exactly as
+\begin{equation}
+\begin{aligned}
+\E Y(\pi,T,U)-\E Y(\pi_0,T_0,U_0)
+&=\underbrace{\E Y(\pi,T,U)-\E Y(\pi_0,T,U)}_{\text{learning}}
++\underbrace{\E Y(\pi_0,T,U)-\E Y(\pi_0,T_0,U)}_{\text{budget}}\\
+&\quad+\underbrace{\E Y(\pi_0,T_0,U)-\E Y(\pi_0,T_0,U_0)}_{\text{state}} .
+\end{aligned}
+\label{eq:identify}
+\end{equation}
+The budget term vanishes if $T_0=T$ and the state term if $U_0=U$; a budget- and state-matched control therefore measures
+the learning term alone. For any other control the contrast is biased by the sum of the two other terms, whose sign is not
+known in advance.
+\end{proposition}
+\begin{proof}
+Add and subtract $\E Y(\pi_0,T,U)$ and $\E Y(\pi_0,T_0,U)$. For a budget-matched control, equal FEs per iteration give
+$T_0=T$ (Proposition~\ref{prop:iter}); for a state-matched control $U_0=U$ by definition.
+\end{proof}
+
+The two other terms can be computed for a given hybrid. Runs stop at a total budget $B$ of FEs, and the number of iterations
+is the largest that fits.
+
+\begin{proposition}[Iterations under a fixed budget]
+\label{prop:iter}
+A variant that spends $a$ FEs on initialisation and $c$ FEs per iteration runs $T=\lfloor (B-a)/c\rfloor$ iterations.
+MPHBS spends $c_\mathrm{S}=3N+1+E$ and the published random control $c_\mathrm{R}=4N+1+E$, both with $a=2N$, because the
+control evaluates the $N$ memory agents again at the start of each iteration. The control therefore runs
+$T_\mathrm{R}/T_\mathrm{S}\approx(3N+1+E)/(4N+1+E)$ times as many iterations.
+\end{proposition}
+\begin{proof}
+Every iteration of MPHBS evaluates the $N$ HBA proposals, the $N$ moved MPA agents, the $N$ FAD candidates, the start point
+of the mediator and the $E$ episode candidates. The control executes the same steps and re-evaluates the $N$ MPA agents
+(lines 58--66 of the published file \texttt{MPHBS\_random\_mirror.m}). The iteration count follows from the stopping rule.
+\end{proof}
+
+With $N=30$: on CEC2022 ($E=24$, $B=200{,}000$) $c_\mathrm{S}=115$ and $c_\mathrm{R}=145$, so $T_\mathrm{S}=1738$ and
+$T_\mathrm{R}=1378$ ($-21\%$); on FIR ($E=72$, $B=150{,}000$) $c_\mathrm{S}=163$, $c_\mathrm{R}=193$, $T_\mathrm{S}=919$ and
+$T_\mathrm{R}=776$ ($-16\%$). The totals, \res{A-auth-CEC2022-RANDOM-fe} and \res{A-auth-FIR-RANDOM-fe} FEs for the control
+against \res{A-auth-CEC2022-SARSA-fe} and \res{A-auth-FIR-SARSA-fe} for MPHBS, are exactly those in the published result
+files.
+
+\begin{proposition}[When the extra block matters]
+\label{prop:memory}
+With a deterministic objective, the control's start-of-iteration block (i) never changes a position and (ii) changes the
+algorithm's state only through the memory update $(\tilde X^M,\tilde f^M)\gets(X^M,f^M)$. If the FAD stage follows Phase~2
+(FIR), MPHBS performs the same update before the block, so the block has no effect other than its cost. If the FAD stage
+precedes Phase~2 (CEC2022), MPHBS keeps the pre-Phase-2 memory, so the next memory saving compares moved MPA agents with
+their pre-mediator positions, whereas the control compares them with the post-mediator population.
+\end{proposition}
+\begin{proof}
+Between two evaluations of an MPA agent its position changes only by Phase~2, which writes back subset members that are
+equal to or better than before. The re-evaluation therefore reproduces the stored values, $\tilde f^M_i<f^M_i$ never holds in
+the block's memory saving, and no position reverts. The memory is last set by the FAD stage. If that stage follows Phase~2
+the memory already equals the current population when the block runs; otherwise it predates Phase~2.
+\end{proof}
+
+The control also omits the value-table bookkeeping and a closest-action projection, which, once the table is not used, only
+set table indices and draw no random numbers. We confirmed Proposition~\ref{prop:memory} and the inertness of these parts by
+bit-identical re-runs (Section~\ref{sec:execution}). Algorithm~\ref{alg:protocol} turns the definition into a procedure.
+
+\begin{algorithm}[!htbp]
+\caption{Constructing and verifying a matched control for a learned component}
+\label{alg:protocol}
+\small
+\begin{algorithmic}[1]
+\Require implementation of $\mathcal A$ with learned component $\mathcal C$; reference distribution $q_0$
+\Ensure control $\mathcal A_0$ and evidence that it is matched
+\State implement $\mathcal A_0$ as a switch in the code path of $\mathcal A$ that replaces $\mathcal C$'s decisions by draws
+  from $q_0$ and disables only the learning updates
+\State \textbf{budget check:} measure FEs per iteration of $\mathcal A$ and $\mathcal A_0$; require equality and identical $T$
+  under every budget used
+\State \textbf{state check:} with $q_0$ set to the decisions of $\mathcal A$ (replay), require bit-identical trajectories of
+  $\mathcal A$ and $\mathcal A_0$ for fixed seeds
+\State \textbf{inertness checks:} for every difference not intended to matter, require bit-identical trajectories with and
+  without it
+\State \textbf{no-component arm:} add a variant without $\mathcal C$ to separate the value of the mechanism from that of learning
+\State fix hypotheses, run counts and decision rule before running; report magnitudes alongside consistency measures
+\end{algorithmic}
+\end{algorithm}
+
+%% =====================================================================
+\section{What the value table can learn}
+\label{sec:theory}
+
+Section~\ref{sec:control} concerns the control. This section asks what the learned component itself can achieve, and
+derives two properties of the value table from the update rule~\eqref{eq:sarsa}. Write $\sigma_d=(n_d,c_d)$ for the
+provenance of coordinate $d$ of the current vector $v$ (the rank and source it was copied from) and $a_d=(n'_d,c'_d)$ for
+the provenance chosen for the evaluated candidate $v'$. In the terms of SARSA, $\sigma$ is the state and $a$ the action, but
+both index the same table.
+
+\begin{proposition}[Credit assignment]
+\label{prop:credit}
+In episode $e$, the update~\eqref{eq:sarsa} changes only the entries $Q_{d,\sigma_d}$, $d\in A_e$. Consequently (i) the
+choices $a_d$ of a rejected candidate receive no update, and (ii) an entry $Q_{d,n,c}$ is updated only in episodes in which
+coordinate $d$ of the current vector was copied from rank $n$ of source $c$, with the reward of a candidate whose coordinate
+$d$ was, in general, chosen differently.
+\end{proposition}
+\begin{proof}
+The update writes $Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,a_d}-Q_{d,\sigma_d})$ if $v'$ is accepted and
+$Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,\sigma_d}-Q_{d,\sigma_d})$ otherwise (lines 415--425 of the
+published \texttt{MPHBS\_main.m}; the port is identical). No other entry is written. Only an accepted candidate becomes the
+current vector, so $\sigma_d$ changes to $a_d$ only after acceptance.
+\end{proof}
+
+The table therefore does not estimate how good it is to \emph{choose} a provenance, which is how the greedy policies use
+it, but how often a search step \emph{from} a vector with that provenance fails. With acceptance rates of a few percent,
+almost all updates are of the second kind. The next result bounds how precisely even that quantity can be estimated.
+
+\begin{proposition}[Noise floor of a table entry]
+\label{prop:noise}
+Consider one entry and the sequence of its updates with rejected candidates. If the rewards of these updates are independent
+with mean $\mu$ and variance $s^2$, the entry follows $Q_k=(1-\beta)Q_{k-1}+\alpha r_k$ with $\beta=\alpha(1-\gamma)$, and
+\begin{equation}
+\lim_{k\to\infty}\E[Q_k]=\frac{\mu}{1-\gamma},\qquad
+\lim_{k\to\infty}\mathrm{Var}[Q_k]=\frac{\alpha^2 s^2}{\beta(2-\beta)}.
+\label{eq:noise}
+\end{equation}
+The entry is an exponentially weighted average with an effective memory of $1/\beta$ updates.
+\end{proposition}
+\begin{proof}
+For a rejected candidate the target is $r_k+\gamma Q_{k-1}$, so $Q_k=Q_{k-1}+\alpha(r_k+\gamma Q_{k-1}-Q_{k-1})
+=(1-\beta)Q_{k-1}+\alpha r_k$. Unrolling, $Q_k=(1-\beta)^kQ_0+\alpha\sum_{j=0}^{k-1}(1-\beta)^j r_{k-j}$; the mean converges to
+$\alpha\mu/\beta=\mu/(1-\gamma)$ and, by independence, the variance to
+$\alpha^2 s^2\sum_j(1-\beta)^{2j}=\alpha^2s^2/(1-(1-\beta)^2)$.
+\end{proof}
+
+With $\alpha=0.1$ and $\gamma=0.3$, $\beta=\res{A-th-beta}$: an entry averages over about \res{A-th-memory} updates, and its
+noise standard deviation is $\res{A-th-sdfactor}\,s$, independent of the length of the run.
+
+\begin{corollary}[Ordering two choices]
+\label{cor:order}
+Let two entries satisfy Proposition~\ref{prop:noise} with mean rewards differing by $\Delta$, a common variance $s^2$ and
+independent noise. In the stationary regime and under a normal approximation, the entry with the higher mean reward also has
+the higher value with probability $\Phi(z)$, where
+\begin{equation}
+z=\frac{\Delta/(1-\gamma)}{\sqrt{2}\,\alpha s/\sqrt{\beta(2-\beta)}} .
+\label{eq:order}
+\end{equation}
+\end{corollary}
+
+A greedy choice is informative only if $z$ is well above 1, i.e.\ if the true differences between choices are large relative
+to the reward noise and persist for many more than $1/\beta$ updates. Neither condition is a property of SARSA in general;
+both follow from the parameters and the reward structure of this mediator, and both can be measured
+(Section~\ref{sec:theorycheck}).
+
+\paragraph{Consequence for a changing frame} The table is indexed by coordinates. If the mediator works in a frame that
+changes from one iteration to the next (Section~\ref{sec:eigen}), the meaning of an entry changes with it, and what an entry
+has averaged over the last $1/\beta$ updates no longer refers to one set of directions. This is an additional reason, besides
+the evidence of Section~\ref{sec:results}, to pair the eigen-frame exchange with the uniform policy.

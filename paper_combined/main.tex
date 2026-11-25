@@ -1,0 +1,87 @@
+\documentclass[11pt]{article}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{times}
+\usepackage[authoryear,round]{natbib}
+\usepackage{url}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,arrows.meta,fit,backgrounds,shapes.geometric}
+\usepackage[section]{placeins}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\emergencystretch}{2em}
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.8}
+\renewcommand{\textfraction}{0.07}
+\renewcommand{\floatpagefraction}{0.8}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{5}
+\newtheorem{proposition}{Proposition}
+\newtheorem{corollary}{Corollary}
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}
+\newcommand{\E}{\mathbb{E}}
+\algrenewcommand\algorithmicrequire{\textbf{Input:}}
+\algrenewcommand\algorithmicensure{\textbf{Output:}}
+\definecolor{cblue}{HTML}{2A78D6}
+\definecolor{cblueL}{HTML}{CDE2FB}
+\definecolor{corange}{HTML}{EB6834}
+\definecolor{corangeL}{HTML}{FBE0D4}
+\definecolor{cgreenL}{HTML}{D3F0E4}
+\definecolor{cgray}{HTML}{F0EFEC}
+\definecolor{lblue}{HTML}{2A78D6}
+\definecolor{lorange}{HTML}{EB6834}
+
+% every number comes from a result file; a missing key is an error, not a silently empty number
+\input{generated/results.tex}
+\def\res#1{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\PackageError{res}{Undefined result key #1}{}\fi}
+
+\title{Learned versus structural information exchange in two-population hybrid optimisers: matched controls,
+credit-assignment limits and a rotation-invariant exchange}
+\author{Abinaya G\\[2pt]
+{\small Department of Information Technology, Saveetha Engineering College, Chennai, India}\\
+{\small \url{gabinaya@saveetha.ac.in}}}
+\date{}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Two-population hybrid optimisers often share information by assembling candidate solutions coordinate by coordinate from
+the members of both populations, and some guide this exchange with a learned controller. We ask what drives such an
+exchange. First, we show that the contrast between a learned controller and a control mixes a learning, a budget and a
+state effect, and give conditions under which a control isolates learning; the published control of a recent hybrid fails
+two of them. Second, in a pre-registered study with matched controls, a uniform random choice performs at least as well as
+the reinforcement-learning controller of that hybrid. Two properties of its update rule explain this: it credits each
+reward to the provenance of the current vector rather than to the choices tried, and its learning rate limits every entry
+to an average over about \res{A-th-memory} updates; logged runs confirm both. Third, since the exchange step carries the
+performance, we make it independent of the coordinate system by recombining in the eigenvector frame of the pooled
+populations. The exchange becomes invariant to rotations of the search space and uses the same number of function
+evaluations. On 56 instances (CEC2022, BBOB, FIR filter design) the frame improves the published hybrid and is never
+significantly worse than it, and it reduces the median error on the rotated ellipsoid \res{E-f10-ratio-MPHBS}-fold. In a pre-registered
+transfer study (\res{X-runs} runs) it improves two further parent pairs: strongly for particle swarm with differential
+evolution (median effect size \res{X-PD-medA}) and slightly for grey wolf with whale optimisation (\res{X-GW-medA}).
+\end{abstract}
+
+\medskip
+\noindent\textbf{Keywords:} Hybrid metaheuristics $\cdot$ Information exchange $\cdot$ Reinforcement learning $\cdot$
+Ablation methodology $\cdot$ Rotation invariance $\cdot$ Eigenvector recombination
+
+\input{sections/part1.tex}
+\input{sections/part2.tex}
+\input{sections/part3.tex}
+
+\FloatBarrier
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}
