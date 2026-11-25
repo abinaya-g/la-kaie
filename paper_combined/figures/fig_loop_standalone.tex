@@ -1,0 +1,14 @@
+% Standalone build of Fig. 1 (loop) for separate artwork upload. Build from paper_combined/:
+%   pdflatex -output-directory figures figures/fig_loop_standalone.tex
+\documentclass[border=4pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{times}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,calc,arrows.meta}
+\definecolor{lblue}{HTML}{2A78D6}
+\definecolor{lorange}{HTML}{EB6834}
+\begin{document}
+\input{figures/fig1_loop.tex}
+\end{document}
