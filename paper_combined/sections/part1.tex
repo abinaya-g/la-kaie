@@ -33,7 +33,7 @@ We answer all three, in this order, with theory and three studies on a common pl
 \begin{enumerate}
 \item \emph{A decomposition of learned-versus-control contrasts} into a learning, a budget and a state term, with
 necessary conditions under which a control measures learning alone, a protocol to construct and verify such controls
-(Section~\ref{sec:control}). Applied to the published control of the hybrid, the decomposition reveals that it runs
+(Section~\ref{sec:control}). Applied to a control that re-evaluates the memory agents, the decomposition shows that it runs
 21\% (CEC2022) and 16\% (FIR) fewer iterations at the same evaluation budget and, in one configuration, changes a
 population memory.
 \item \emph{Two propositions on the value table} derived from its update rule: a credit-assignment property (only the
@@ -149,7 +149,7 @@ x^M_i \leftarrow \begin{cases}\tilde x^M_i & \tilde f^M_i < f(x^M_i),\\ x^M_i & 
 \label{eq:memory}
 \end{equation}
 A FAD stage perturbs the MPA population, evaluates every candidate ($N$ FEs) and accepts greedily; it is placed before
-Phase~2 on CEC2022 and BBOB and after it on FIR, as in the original design.
+Phase~2 on CEC2022 and BBOB and after it on FIR, as in the reference design.
 
 \paragraph{Phase 2: the mediator} Each population contributes $N_\mathrm{sub}=\min(N,\max(5,\mathrm{round}(\rho N)))$
 members, half of them the best and the rest at random, sorted by fitness; the subsets form a tensor
@@ -183,13 +183,10 @@ Q_{d,n_d,c_d} \leftarrow Q_{d,n_d,c_d} + \alpha\bigl(r_e + \gamma\,Q_{d,n'_d,c'_
 with $\alpha=0.1$ and $\gamma=0.3$, where $(n'_d,c'_d)$ is the choice in $v'$ if it was accepted and $(n_d,c_d)$ otherwise.
 The \emph{random mediator} draws $(c_d,n_d)$ uniformly and never reads or updates $Q$.
 
-\paragraph{Configurations} With $N=30$, the configuration of the original study is B-C1 on CEC2022 and BBOB ($K=7$,
+\paragraph{Configurations} With $N=30$, the reference configuration is B-C1 on CEC2022 and BBOB ($K=7$,
 $N_i=3$, $\rho=0.25$, $N_\mathrm{sub}=8$, $E=24$, FAD before Phase~2) and A-C1 on FIR ($K=3$, $N_i=9$, $E=72$, FAD after
 Phase~2), $w_\mathrm{rank}=1$, $w_\mathrm{nov}=0.3$, $w_\mathrm{best}=0.05$~\citep{flores2026mphbs}. We keep these values
-in every study and tune nothing. Their authors compare the learned hybrid with a random-assembly control (the ``mirror'').
-Re-analysing their 30 common-seed runs with paired Wilcoxon tests and Holm correction, the learned variant is
-significantly better than the mirror on \res{A-auth-CEC2022-vsRANDOM-sigS} of \res{A-auth-CEC2022-n} CEC2022 functions and
-worse on \res{A-auth-CEC2022-vsRANDOM-sigC}, and not significantly different on any of the \res{A-auth-FIR-n} FIR cases.
+in every study and tune nothing.
 
 \begin{algorithm}[!htbp]
 \caption{Phase 2 (mediator) with policy $\pi\in\{\text{SARSA},\text{uniform}\}$ and frame probability $q$ ($q=0$: axis frame).}
@@ -218,7 +215,7 @@ worse on \res{A-auth-CEC2022-vsRANDOM-sigC}, and not significantly different on 
 \centering
 \resizebox{0.66\textwidth}{!}{\input{figures/fig1_loop.tex}}
 \caption{One iteration of the hybrid with its evaluation cost ($N$ agents per population, $E$ mediator episodes). The dashed
-block exists only in the published random control. The arms of Study~I replace the mediator's policy (RND-FAIR), remove
+block exists only in the re-evaluating control. The arms of Study~I replace the mediator's policy (RND-FAIR), remove
 Phase~2 (SKEL), or refresh the memory after Phase~2 at no cost (RND-SYNC).}
 \label{fig:loop}
 \end{figure}
@@ -263,21 +260,18 @@ is the largest that fits.
 \begin{proposition}[Iterations under a fixed budget]
 \label{prop:iter}
 A variant that spends $a$ FEs on initialisation and $c$ FEs per iteration runs $T=\lfloor (B-a)/c\rfloor$ iterations.
-MPHBS spends $c_\mathrm{S}=3N+1+E$ and the published random control $c_\mathrm{R}=4N+1+E$, both with $a=2N$, because the
+MPHBS spends $c_\mathrm{S}=3N+1+E$ and a random control that re-evaluates the memory agents $c_\mathrm{R}=4N+1+E$, both with $a=2N$, because the
 control evaluates the $N$ memory agents again at the start of each iteration. The control therefore runs
 $T_\mathrm{R}/T_\mathrm{S}\approx(3N+1+E)/(4N+1+E)$ times as many iterations.
 \end{proposition}
 \begin{proof}
 Every iteration of MPHBS evaluates the $N$ HBA proposals, the $N$ moved MPA agents, the $N$ FAD candidates, the start point
-of the mediator and the $E$ episode candidates. The control executes the same steps and re-evaluates the $N$ MPA agents
-(lines 58--66 of the published file \texttt{MPHBS\_random\_mirror.m}). The iteration count follows from the stopping rule.
+of the mediator and the $E$ episode candidates. The control executes the same steps and re-evaluates the $N$ MPA agents. The iteration count follows from the stopping rule.
 \end{proof}
 
 With $N=30$: on CEC2022 ($E=24$, $B=200{,}000$) $c_\mathrm{S}=115$ and $c_\mathrm{R}=145$, so $T_\mathrm{S}=1738$ and
 $T_\mathrm{R}=1378$ ($-21\%$); on FIR ($E=72$, $B=150{,}000$) $c_\mathrm{S}=163$, $c_\mathrm{R}=193$, $T_\mathrm{S}=919$ and
-$T_\mathrm{R}=776$ ($-16\%$). The totals, \res{A-auth-CEC2022-RANDOM-fe} and \res{A-auth-FIR-RANDOM-fe} FEs for the control
-against \res{A-auth-CEC2022-SARSA-fe} and \res{A-auth-FIR-SARSA-fe} for MPHBS, are exactly those in the published result
-files.
+$T_\mathrm{R}=776$ ($-16\%$).
 
 \begin{proposition}[When the extra block matters]
 \label{prop:memory}
@@ -337,8 +331,8 @@ $d$ was, in general, chosen differently.
 \end{proposition}
 \begin{proof}
 The update writes $Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,a_d}-Q_{d,\sigma_d})$ if $v'$ is accepted and
-$Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,\sigma_d}-Q_{d,\sigma_d})$ otherwise (lines 415--425 of the
-published \texttt{MPHBS\_main.m}; the port is identical). No other entry is written. Only an accepted candidate becomes the
+$Q_{d,\sigma_d}\gets Q_{d,\sigma_d}+\alpha(r_e+\gamma Q_{d,\sigma_d}-Q_{d,\sigma_d})$ otherwise (as implemented in the
+reference code and in our port). No other entry is written. Only an accepted candidate becomes the
 current vector, so $\sigma_d$ changes to $a_d$ only after acceptance.
 \end{proof}
 

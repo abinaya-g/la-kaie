@@ -119,6 +119,10 @@ def copy_tables():
         s = (A_DIR / "generated" / f"{t}.tex").read_text(encoding="utf-8")
         s = re.sub(r"\bH(\d[ab]?)\b", r"L\1", s)
         s = s.replace("H1--H4", "L1--L4").replace("H6--H8", "L6--L8")
+        s = s.replace("RND-AUTH", "RND-REEVAL")
+        s = s.replace("authors' RANDOM mirror (+N re-evaluations)", "random control with memory re-evaluation (+N FEs)")
+        s = s.replace("authors' final configuration of the domain", "reference configuration of the domain")
+        s = s.replace("authors' backbone without mediator", "backbone without mediator")
         (GEN / f"{t}.tex").write_text(s, encoding="utf-8")
     for t in study2:
         s = (E_DIR / "generated" / f"{t}.tex").read_text(encoding="utf-8")
@@ -133,6 +137,10 @@ def copy_figures():
         shutil.copy(E_DIR / "figures" / name, FIG / name)
     for name in ("fig_forest.pdf", "fig_instances.pdf", "fig1_loop.tex", "fig_dose.pdf"):
         shutil.copy(A_DIR / "figures" / name, FIG / name)
+    p2 = FIG / "fig1_loop.tex"
+    t = p2.read_text(encoding="utf-8")
+    t = t.replace(r"only in the authors' \mbox{RANDOM} mirror (RND-AUTH)", r"only in the re-evaluating control (RND-REEVAL)").replace("RND-AUTH", "RND-REEVAL")
+    p2.write_text(t, encoding="utf-8")
     # the combined text does not number the native-move equations of the parent algorithms
     p = FIG / "fig_architecture_tikz.tex"
     s = p.read_text(encoding="utf-8")
@@ -206,6 +214,35 @@ Parent pair & $\tilde A$ & W/T/L & $p$ & $p_\text{Holm}$ & $p$ (Pratt / zsplit) 
     plt.close(fig)
 
 
+def forest_figure():
+    summ = json.loads((ROOT / "results" / "analysis" / "pathA" / "summary.json").read_text(encoding="utf-8"))
+    items = [(lvl, k, c) for lvl in ("primary", "secondary") for k, c in summ[lvl].items()]
+    ink2, grey = "#52514e", "#9a9893"
+
+    def nice(k, c):
+        a, b = c["anchor"].replace("PA-", ""), c["comparator"].replace("PA-", "")
+        return re.sub(r"\bH(\d)", r"L\1", f"{k}  ({a} vs {b})").replace("RND-AUTH", "RND-REEVAL")
+
+    fig, ax = plt.subplots(figsize=(7.0, 0.19 * len(items) + 0.8))
+    for i, (lvl, k, c) in enumerate(items[::-1]):
+        col = "#2a78d6" if c["ci_low"] > 0.5 else ("#eb6834" if c["ci_high"] < 0.5 else grey)
+        ax.errorbar(c["wbar"], i, xerr=[[c["wbar"] - c["ci_low"]], [c["ci_high"] - c["wbar"]]],
+                    fmt="o" if lvl == "primary" else "s", color=col, ms=4, capsize=1.5, lw=1,
+                    mfc=col if lvl == "primary" else "white")
+        ax.text(1.005, i, c["verdict"], va="center", fontsize=6, color=ink2, transform=ax.get_yaxis_transform())
+    ax.set_yticks(range(len(items)))
+    ax.set_yticklabels([nice(k, c) for _, k, c in items[::-1]], fontsize=6)
+    ax.axvline(0.5, color=grey, ls=(0, (2, 2)), lw=0.8)
+    ax.axvspan(0.44, 0.56, color="#f0efec", zorder=0)
+    ax.axhline(len([1 for it in items if it[0] == "secondary"]) - 0.5, color=ink2, lw=0.5)
+    ax.set_xlim(0.2, 1.0)
+    ax.set_xlabel(r"$\bar{W}$: mean paired win probability of the first arm (95% bootstrap CI)")
+    ax.grid(axis="x", color="#e6e5e1", lw=0.5)
+    fig.tight_layout(rect=(0, 0, 0.88, 1))
+    fig.savefig(FIG / "fig_forest.pdf")
+    plt.close(fig)
+
+
 def merge_bib():
     def entries(path):
         txt = path.read_text(encoding="utf-8")
@@ -239,4 +276,5 @@ if __name__ == "__main__":
     copy_tables()
     copy_figures()
     transfer_table_and_figure()
+    forest_figure()
     merge_bib()

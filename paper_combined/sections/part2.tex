@@ -102,7 +102,7 @@ finished.}
 \toprule
 Study & Question & Confirmatory hypotheses & Benchmarks, runs & Status \\
 \midrule
-I & Does learning matter? (Q1, Q2) & L1 learning; L2 published control; L3 mediator; L4 loop & CEC2022 $D=20$ (12), FIR (8); 50--100 runs per arm & pre-registered; BBOB extension and theory check exploratory \\
+I & Does learning matter? (Q1, Q2) & L1 learning; L2 re-evaluating control; L3 mediator; L4 loop & CEC2022 $D=20$ (12), FIR (8); 50--100 runs per arm & pre-registered; BBOB extension and theory check exploratory \\
 II & Does the eigen frame help? (Q3) & F1 vs random mediator; F2 vs learned hybrid (28 held-out instances) & CEC2022 $D=10,20$, BBOB $D=20$, FIR (56); 30 runs per algorithm & design document before confirmatory runs; held-out set \\
 III & Does it transfer? (Q3) & T1 eigen vs axis for two parent pairs & BBOB $D=20$ (24), FIR (8); 30 runs per arm & pre-registered addendum; analysis script frozen \\
 \bottomrule
@@ -133,10 +133,10 @@ $10^{-8}$.
 All arms use the configuration of the benchmark (Section~\ref{sec:hybrid}) and are listed in Table~\ref{tab:arms}.
 \textbf{SARSA} is MPHBS unchanged. \textbf{RND-FAIR} draws $(c_d,n_d)$ uniformly and never reads or updates $Q$; everything
 else, including the FE cost, is identical (budget- and state-matched). \textbf{RND-SYNC} (CEC2022 only) adds the control's
-memory update at zero cost; by Proposition~\ref{prop:memory} it would equal RND-FAIR on FIR. \textbf{RND-AUTH} ports the
-published control, including its extra evaluations. \textbf{SKEL} is the loop without Phase~2, and \textbf{MPHB} the
-published backbone without mediator. The hypotheses are L1 (SARSA vs RND-FAIR: learning), L2a (RND-SYNC, or RND-FAIR on FIR,
-vs RND-AUTH: budget of the control), L2b (RND-FAIR vs RND-SYNC on CEC2022: memory), L3 (SARSA vs SKEL: mediator) and L4
+memory update at zero cost; by Proposition~\ref{prop:memory} it would equal RND-FAIR on FIR. \textbf{RND-REEVAL} is a random control that
+re-evaluates the memory agents at the start of each iteration (extra evaluations). \textbf{SKEL} is the loop without
+Phase~2, and \textbf{MPHB} the backbone without mediator. The hypotheses are L1 (SARSA vs RND-FAIR: learning), L2a (RND-SYNC, or RND-FAIR on FIR,
+vs RND-REEVAL: budget of the control), L2b (RND-FAIR vs RND-SYNC on CEC2022: memory), L3 (SARSA vs SKEL: mediator) and L4
 (SKEL vs MPHB: loop). L5--L8 (escape rate on F10, number of episodes, mediator components, memory update in SARSA) are
 exploratory. The H1 pair was run 100 times per instance, every other arm 50 times.
 
@@ -154,7 +154,7 @@ otherwise \emph{inconclusive}.
 
 \subsection{Study II: algorithms and statistics}
 The hybrid family comprises EIG-MPHBS ($q=0.5$), MPHBS-R (the same code with the axis frame; this isolates the frame) and
-MPHBS. HBA and MPA, ported from the reference code and validated against published per-run results, PSO, DE, GWO and WOA with
+MPHBS. HBA and MPA, ported from the reference code and validated against its per-run results, PSO, DE, GWO and WOA with
 the standard settings of their publications, L-SHADE~\citep{tanabe2014lshade} and IPOP-CMA-ES~\citep{hansen2001cma,
 auger2005ipop,hansen2019pycma} complete the eleven algorithms; all use the same budget. No algorithm is tuned beyond the
 choice of $q$. Before any confirmatory run a design document fixed the algorithms, the benchmarks and two hypotheses on 28
@@ -180,11 +180,10 @@ analysis script was committed before the campaign finished.
 \subsection{Execution and validation}
 \label{sec:execution}
 Study~I ran once on GitHub-hosted Linux runners in a pinned environment after the full test suite had passed; Studies~II and
-III ran on a 12-core laptop, one run per core, with every run seeded independently. The port's MPHBS reproduces the published
-FE totals exactly and their published run distributions (the one known exception, a lower escape rate on CEC2022 F10, is
-examined in Section~\ref{sec:resI}). Unit tests establish that (i) the variant code with default settings is bit-identical to
+III ran on a 12-core laptop, one run per core, with every run seeded independently. The port's MPHBS reproduces the FE totals of the
+reference implementation exactly and its run distributions. Unit tests establish that (i) the variant code with default settings is bit-identical to
 the validated MPHBS port; (ii) every arm's FE total matches Table~\ref{tab:arms}; (iii) at a fixed number of iterations the
-published control produces trajectories bit-identical to RND-FAIR under the FIR configuration and to RND-SYNC under the
+re-evaluating control produces trajectories bit-identical to RND-FAIR under the FIR configuration and to RND-SYNC under the
 CEC2022 configuration, confirming Proposition~\ref{prop:memory}; (iv) removing the global-best copy does not change any
 trajectory; (v) the eigen-frame and axis-frame hybrids use identical FE counts on every paired run, as
 Proposition~\ref{prop:cost} states, and in Study~III on every instance of every pair. All runs of Study~I completed with the

@@ -23,7 +23,7 @@ intervals lie below 0.5, one instance per benchmark is significant in favour of 
 so the pre-registered verdict is \emph{comparator superior} on both. The effect is small: the median relative difference is
 $\res{A-H1-CEC2022-rel}$ on CEC2022 and $\res{A-H1-FIR-rel}$ on FIR (negative: SARSA's error is higher).
 
-\paragraph{The published control (L2)} With the memory update held fixed, the extra FEs of the control do not produce a
+\paragraph{The re-evaluating control (L2)} With the memory update held fixed, the extra FEs of the control do not produce a
 conclusive difference on CEC2022 ($\bar W=\res{A-H2a-CEC2022-wbar}$ \res{A-H2a-CEC2022-ci}, \emph{inconclusive}). On FIR,
 where by Proposition~\ref{prop:memory} the extra block affects only the budget, the budget-identical random mediator is better
 than the control ($\bar W=\res{A-H2a-FIR-wbar}$ \res{A-H2a-FIR-ci}, \emph{anchor superior}). The memory update has a large
@@ -31,7 +31,7 @@ effect on CEC2022 (L2b): random assembly \emph{without} the update beats the sam
 of 12 functions ($\bar W=\res{A-H2b-CEC2022-wbar}$ \res{A-H2b-CEC2022-ci}; median relative difference
 $\res{A-H2b-CEC2022-rel}$), for instance on F5 with median errors of $\res{A-H2b-CEC2022-i5-amed}$ and
 $\res{A-H2b-CEC2022-i5-cmed}$, while \res{A-H2b-CEC2022-sigc} functions favour the update; the verdict is \emph{mixed}. L2a and
-L2b together explain the difference between the learned hybrid and the published control without any contribution of
+L2b together explain the difference between the learned hybrid and a re-evaluating control without any contribution of
 learning: it comes from the configuration of the control, mostly its memory update on CEC2022 and its reduced budget on FIR.
 This is the budget and state term of Proposition~\ref{prop:identify}.
 
@@ -46,11 +46,9 @@ accompanied by magnitudes.
 
 \paragraph{Exploratory results (L5--L8)} SARSA escapes the local basin of CEC2022 F10 in \res{A-H5-SARSA-esc}/\res{A-H5-SARSA-n}
 runs (Wilson interval \res{A-H5-SARSA-ci}) and RND-FAIR in \res{A-H5-RND-FAIR-esc}/\res{A-H5-RND-FAIR-n}
-(\res{A-H5-RND-FAIR-ci}; exact McNemar $p=\res{A-H5-mcnemar-p}$); the control escapes in
+(\res{A-H5-RND-FAIR-ci}; exact McNemar $p=\res{A-H5-mcnemar-p}$); the re-evaluating control escapes in
 \res{A-H5-RND-AUTH-esc}/\res{A-H5-RND-AUTH-n} and SKEL in \res{A-H5-SKEL-esc}/\res{A-H5-SKEL-n}. Escaping requires the
-mediator but not learning. The published 17/30 for SARSA is inconsistent with our 100-seed estimate (binomial
-$p=\res{A-H5-binom-p}$); we regard the single published sample as unrepresentative but cannot rule out a platform-dependent
-effect. Fewer episodes per iteration are clearly worse on FIR ($N_i=1$ against the default $9$: $\bar W=
+mediator but not learning. Fewer episodes per iteration are clearly worse on FIR ($N_i=1$ against the default $9$: $\bar W=
 \res{A-H6-RND-Ni1-vs-default-FIR-wbar}$ \res{A-H6-RND-Ni1-vs-default-FIR-ci}), while no tested $N_i$ shows a consistent
 advantage of SARSA (Fig.~\ref{fig:dose}); removing proxy screening or relaxed acceptance leaves performance unchanged or
 inconclusive; and adding the zero-cost memory update to SARSA reproduces the L2b pattern ($\bar W=\res{A-H8-CEC2022-wbar}$
@@ -263,7 +261,7 @@ basin; it does not help highly multimodal rotated functions such as f15, and it 
 such as f3 and f4. Phase~1 remains coordinate-wise, which is why the gap to CMA-ES, L-SHADE and EA4eig on rotated functions
 persists. This is an improvement of a hybrid within its class, not a new state of the art.
 
-\paragraph{Matched controls} The published control illustrates two ways in which a control can differ from the learned variant
+\paragraph{Matched controls} The re-evaluating control illustrates two ways in which a control can differ from the learned variant
 without anybody intending it: a different number of iterations at the same budget, and a different update of a state
 variable. Proposition~\ref{prop:identify} makes the requirement explicit, and Algorithm~\ref{alg:protocol} turns it into a
 procedure whose budget and state checks would have exposed both differences before the first run. A paired, seed-matched
@@ -277,17 +275,17 @@ CMA-ES remain the stronger default on problems of this size.
 
 \subsection{Limitations}
 \begin{itemize}
-\item \emph{Scope.} Study~I covers one hybrid in its authors' final configurations, selected with SARSA on CEC2022 and FIR,
+\item \emph{Scope.} Study~I covers one hybrid in its reference configurations, selected with SARSA on CEC2022 and FIR,
 which makes L1 conservative; Studies~II and~III cover problems with $D\le31$. The confirmatory effect in Study~II is small and
 sensitive to the handling of tied instances. No free lunch results~\citep{wolpert1997nfl} caution against generalising beyond the
 problems studied.
 \item \emph{Transfer.} Study~III covers two further pairs on two benchmark families with the mediator settings of the
-original hybrid; the effect for GWO with WOA is small, and the mechanism of the gain for PSO with DE is not identified.
+reference hybrid; the effect for GWO with WOA is small, and the mechanism of the gain for PSO with DE is not identified.
 \item \emph{Choices fixed by pilot.} The value $q=0.5$ was chosen from a pilot with two values; other values or an adaptive
 $q$ may perform differently. The classical algorithms were added after the main analysis of Study~II and use standard, not
 tuned, settings. The EA4eig comparison is unpaired and across implementations; run times were measured on a shared laptop.
-\item \emph{Port and platform.} Study~I uses a Python port whose agreement with the published MATLAB runs is distributional,
-because random streams differ; the F10 discrepancy (L5) remains unexplained.
+\item \emph{Port and platform.} Study~I uses a Python port whose agreement with the reference MATLAB implementation is
+distributional, because random streams differ.
 \item \emph{Exploratory parts.} L5--L8, the theory check and the BBOB extension are exploratory and should be confirmed
 independently. The relative difference $\hat\delta$ was added after the pre-registration.
 \item \emph{Dimension.} For larger $D$ the $O(D^3)$ decomposition and the reliability of the covariance estimate from $2N$

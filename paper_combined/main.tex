@@ -1,7 +1,5 @@
-\documentclass[11pt]{article}
-\usepackage[a4paper,margin=2.5cm]{geometry}
-\usepackage{times}
-\usepackage[authoryear,round]{natbib}
+\documentclass[preprint,12pt,authoryear]{elsarticle}
+\usepackage[margin=2.5cm]{geometry}
 \usepackage{url}
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb,amsthm}
@@ -45,43 +43,51 @@
 \input{generated/results.tex}
 \def\res#1{\ifcsname res@#1\endcsname\csname res@#1\endcsname\else\PackageError{res}{Undefined result key #1}{}\fi}
 
-\title{Learned versus structural information exchange in two-population hybrid optimisers: matched controls,
-credit-assignment limits and a rotation-invariant exchange}
-\author{Abinaya G\\[2pt]
-{\small Department of Information Technology, Saveetha Engineering College, Chennai, India}\\
-{\small \url{gabinaya@saveetha.ac.in}}}
-\date{}
+\journal{Applied Soft Computing}
 
 \begin{document}
-\maketitle
+
+\begin{frontmatter}
+
+\title{Learned versus structural information exchange in two-population hybrid optimisers: matched controls,
+credit-assignment limits and a rotation-invariant exchange}
+
+\author[1]{Abinaya G\corref{cor1}}
+\ead{gabinaya@saveetha.ac.in}
+\cortext[cor1]{Corresponding author.}
+\affiliation[1]{organization={Department of Information Technology, Saveetha Engineering College},
+                city={Chennai}, country={India}}
 
 \begin{abstract}
 Two-population hybrid optimisers often share information by assembling candidate solutions coordinate by coordinate from
 the members of both populations, and some guide this exchange with a learned controller. We ask what drives such an
 exchange. First, we show that the contrast between a learned controller and a control mixes a learning, a budget and a
-state effect, and give conditions under which a control isolates learning; the published control of a recent hybrid fails
-two of them. Second, in a pre-registered study with matched controls, a uniform random choice performs at least as well as
+state effect, and give conditions under which a control isolates learning; a control that re-evaluates the population memory
+fails two of them. Second, in a pre-registered study with matched controls, a uniform random choice performs at least as well as
 the reinforcement-learning controller of that hybrid. Two properties of its update rule explain this: it credits each
 reward to the provenance of the current vector rather than to the choices tried, and its learning rate limits every entry
 to an average over about \res{A-th-memory} updates; logged runs confirm both. Third, since the exchange step carries the
 performance, we make it independent of the coordinate system by recombining in the eigenvector frame of the pooled
 populations. The exchange becomes invariant to rotations of the search space and uses the same number of function
-evaluations. On 56 instances (CEC2022, BBOB, FIR filter design) the frame improves the published hybrid and is never
+evaluations. On 56 instances (CEC2022, BBOB, FIR filter design) the frame improves the base hybrid and is never
 significantly worse than it, and it reduces the median error on the rotated ellipsoid \res{E-f10-ratio-MPHBS}-fold. In a pre-registered
 transfer study (\res{X-runs} runs) it improves two further parent pairs: strongly for particle swarm with differential
 evolution (median effect size \res{X-PD-medA}) and slightly for grey wolf with whale optimisation (\res{X-GW-medA}).
 \end{abstract}
 
-\medskip
-\noindent\textbf{Keywords:} Hybrid metaheuristics $\cdot$ Information exchange $\cdot$ Reinforcement learning $\cdot$
-Ablation methodology $\cdot$ Rotation invariance $\cdot$ Eigenvector recombination
+\begin{keyword}
+Hybrid metaheuristics \sep Information exchange \sep Reinforcement learning \sep Ablation methodology \sep
+Rotation invariance \sep Eigenvector recombination
+\end{keyword}
+
+\end{frontmatter}
 
 \input{sections/part1.tex}
 \input{sections/part2.tex}
 \input{sections/part3.tex}
 
 \FloatBarrier
-\bibliographystyle{plainnat}
+\bibliographystyle{elsarticle-harv}
 \bibliography{refs}
 
 \end{document}

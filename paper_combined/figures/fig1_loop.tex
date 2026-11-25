@@ -10,7 +10,7 @@
   tag/.style={font=\scriptsize\bfseries, text=black!80, anchor=east, align=right},
   arr/.style={-{Stealth[length=2mm]}, black!70, line width=0.6pt}]
   \node[extra] (re) {MPA re-evaluation and memory refresh\\[-1pt]
-        {\scriptsize only in the authors' \mbox{RANDOM} mirror (RND-AUTH)}};
+        {\scriptsize only in the re-evaluating control (RND-REEVAL)}};
   \node[box, below=of re] (p1) {Phase 1: HBA move \& MPA move\\[-1pt]{\scriptsize greedy replacement, MPA memory saving}};
   \node[box, below=of p1] (fad) {FAD stage, evaluated greedily\\[-1pt]
         {\scriptsize before Phase 2 (CEC2022) or after it (FIR)}};
@@ -36,6 +36,6 @@
   \node[tag] at ($(p2.west)+(-5.5mm,-5mm)$) {SKEL:\\removed};
   \node[font=\scriptsize, text=lorange!90!black, align=left, anchor=north west, text width=58mm]
         at ($(ri.south west)+(0,-1.2mm)$)
-        {Cost per iteration: SARSA, RND-FAIR, RND-SYNC $3N{+}1{+}E$; RND-AUTH $4N{+}1{+}E$; SKEL $3N$.
+        {Cost per iteration: SARSA, RND-FAIR, RND-SYNC $3N{+}1{+}E$; RND-REEVAL $4N{+}1{+}E$; SKEL $3N$.
          RND-SYNC refreshes the MPA memory after Phase 2 at zero cost.};
 \end{tikzpicture}
