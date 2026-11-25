@@ -1,0 +1,51 @@
+\documentclass[11pt]{letter}
+\usepackage[a4paper,top=1.5cm,bottom=1.5cm,left=2.2cm,right=2.2cm]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{url}
+\usepackage{enumitem}\setlist{itemsep=1pt,topsep=3pt}
+\signature{Abinaya G\\\url{gabinaya@saveetha.ac.in}}
+\address{Abinaya G\\Department of Information Technology\\Saveetha Engineering College\\Chennai, India}
+\date{\today}
+
+\begin{document}
+\begin{letter}{The Editors\\Applied Soft Computing}
+
+\opening{Dear Editors,}
+
+I submit the manuscript \emph{``Learned versus structural information exchange in two-population hybrid optimisers:
+matched controls, credit-assignment limits and a rotation-invariant exchange''} for consideration as a research article in
+\emph{Applied Soft Computing}.
+
+Hybrid optimisers that run two populations side by side share information by recombining their members, and some steer
+this exchange with a learned controller. The manuscript asks what such a controller adds and what limits the exchange, and
+it answers with theory and three studies.
+
+The main contributions are:
+\begin{itemize}
+\item a decomposition of any learned-versus-control contrast into a learning, a budget and a state term, with conditions
+  under which a control measures learning alone, and a protocol to build and verify such controls;
+\item two properties derived from the update rule of a SARSA value table, one on credit assignment and one on its noise
+  floor, which bound what the controller can learn, with a logged-run check of both;
+\item a pre-registered study with matched controls (14\,300 seed-paired runs on CEC2022 and eight FIR filter-design
+  problems, plus a BBOB extension) in which a uniform random choice performs at least as well as the learned controller;
+\item an exchange performed in the eigenvector frame of the pooled populations, which is invariant to rotations of the
+  search space and uses no extra function evaluations, evaluated on 56 instances against ten algorithms, with a
+  14-fold reduction of the median error on the rotated ellipsoid;
+\item a pre-registered transfer study (3\,840 runs) showing that the same exchange improves two further parent pairs,
+  strongly for particle swarm with differential evolution and slightly for grey wolf with whale optimisation.
+\end{itemize}
+
+Together, these results give a checkable standard for evaluating learned components in search algorithms and show how a
+structural change to the exchange step improves hybrid optimisers at no evaluation cost. The limits of the approach,
+including its failure on rotated multimodal functions and the gap to CMA-ES and L-SHADE, are reported. All code, the
+frozen pre-registrations, the run records and the analysis scripts are publicly available.
+
+The manuscript is original, has not been published previously, and is not under consideration for publication elsewhere.
+The author declares no competing interests, and the research received no specific funding. Thank you for considering this
+submission.
+
+\closing{Yours sincerely,}
+
+\end{letter}
+\end{document}

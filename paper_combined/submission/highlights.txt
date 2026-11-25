@@ -1,0 +1,5 @@
+A budget- and state-matched control isolates what a learned controller adds
+Update-rule analysis bounds what a SARSA value table can learn
+Pre-registered runs: random choice matches the learned exchange controller
+Eigen-frame exchange is rotation invariant and needs no extra evaluations
+Pre-registered transfer study on two further parent pairs of optimisers

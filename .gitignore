@@ -32,3 +32,13 @@ paper/submission/*.log
 paper/submission/*.out
 paper/figures/*.aux
 paper/figures/*.log
+paper_combined/*.aux
+paper_combined/*.log
+paper_combined/*.out
+paper_combined/*.fdb_latexmk
+paper_combined/*.fls
+paper_combined/*.blg
+paper_combined/*.bbl
+paper_combined/submission/*.aux
+paper_combined/submission/*.log
+paper_combined/submission/*.out
